@@ -1,0 +1,242 @@
+/* =========================================================
+   Sushrutha Grid — shared UI kit (buttons, forms, shells)
+   Used across Patient / Doctor / Admin portals
+   ========================================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1.5px solid transparent;
+  font-family: var(--font-ui);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    transform 0.12s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #d41c22 0%, var(--primary-crimson) 100%);
+  color: #fff;
+  border-color: #9f1218;
+  box-shadow: 0 4px 12px rgba(196, 22, 28, 0.22);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--primary-crimson) 0%, var(--primary-crimson-hover) 100%);
+  box-shadow: 0 6px 16px rgba(196, 22, 28, 0.28);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: var(--text-primary);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--text-primary);
+}
+
+.btn-success {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  color: #fff;
+  border-color: #047857;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+.btn-danger {
+  background: #fff;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #fef2f2;
+}
+
+.filter-select,
+input.filter-select,
+select.filter-select,
+textarea.filter-select {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  background: #fff;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.filter-select:focus,
+input.filter-select:focus,
+select.filter-select:focus,
+textarea.filter-select:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.14);
+}
+
+/* Portal login / switch shells */
+.portal-gate,
+.admin-login-gate {
+  position: relative;
+  max-width: 520px;
+  margin: 36px auto;
+  background: var(--card-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 18px;
+  padding: 32px 28px;
+  box-shadow: var(--shadow-hover);
+  overflow: hidden;
+}
+
+.portal-gate::before,
+.admin-login-gate::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--maroon-emergency), var(--primary-crimson), #ea580c);
+}
+
+.portal-gate.doctor-gate::before {
+  background: linear-gradient(90deg, #065f46, #10b981, #34d399);
+}
+
+.portal-gate.admin-gate::before,
+.admin-login-gate::before {
+  background: linear-gradient(90deg, #1e3a8a, #2563eb, #38bdf8);
+}
+
+.portal-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.workspace-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.workspace-banner {
+  background: var(--card-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-card);
+}
+
+.panel-surface {
+  background: var(--card-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Auth modal shell — must portal to document.body (navbar backdrop-filter breaks fixed) */
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: max(24px, 4vh) 16px;
+  animation: uiFadeIn 0.18s ease;
+  box-sizing: border-box;
+}
+
+.auth-modal-card {
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  background: #fff;
+  border-radius: 18px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
+  padding: 26px 24px;
+  animation: uiRise 0.22s ease;
+  flex-shrink: 0;
+}
+
+@keyframes uiFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes uiRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Soft page rhythm */
+.page-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.link-quiet {
+  color: var(--primary-crimson);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.link-quiet:hover {
+  text-decoration: underline;
+}
+
+.doctor-workspace .card,
+.admin-workspace .card {
+  border-radius: 16px;
+}
+
+.doctor-workspace {
+  gap: 16px;
+}

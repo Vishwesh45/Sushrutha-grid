@@ -1,0 +1,30 @@
+---
+description: Verified Sushrutha Grid project context for Prasiddhi
+alwaysApply: true
+---
+
+# Sushrutha Grid
+
+Student project by Prasiddhi. Multi-tenant government-hospital workflow for Karnataka (Bengaluru civil hospitals). One MongoDB database `sushrutha_grid`; records are tagged with `hospital_id`. It is not a separate database per hospital.
+
+Stack: React 19 + Vite + Tailwind frontend, FastAPI backend, PyMongo, JWT + bcrypt, native WebSocket at `/ws/hospital` (not Socket.IO), Whisper speech-to-text, rules-based clinical NLP in `backend/app/services/semantic_nlp_service.py`.
+
+This workspace is `C:\vishwesh\sushrutha - Copy`. A sibling copy at `C:\vishwesh\sushrutha` may already own ports 8000 and 5173. When those are busy, run this copy on 8001 and 5174 with `VITE_API_URL=http://127.0.0.1:8001/api` and matching CORS.
+
+## Working (verified 4 Nov 2026)
+
+- 40/40 backend tests passed.
+- Live API healthy against MongoDB. Seeded data included 304 users (215 patient, 54 doctor, 43 admin), 42 doctors, 152 OPD tokens, 98 consultations, 23 prescriptions, 959 `hospital_events`, 9 hospitals (6 grid pilots), 199 sessions. Eleven collections total.
+- Patient intake, hospital GPS/nearby search (Haversine + live OSM), Whisper `POST /api/speech/transcribe`, semantic NLP, NegEx, RED/AMBER/GREEN triage, Rotterdam PCOD routing to Obstetrics & Gynecology (3 clusters → score 96, ICD-10 E28.2, 5-test workup).
+- Queue lifecycle WAITING → CALLED → IN_CONSULTATION → COMPLETED, plus SKIPPED and rejoin. Doctor desk, digital prescription with follow-up text, lobby TV chime, admin doctor roster, volunteer requisitions, CSR requirement/pledge/fulfill, and live OPD token analytics.
+
+## Not built, or only a preview
+
+- No SMS/WhatsApp, APScheduler reminders, grievance tickets, or feedback ratings.
+- No nurse ward, e-MAR, or shift handover. `nurse`, `volunteer`, and `csr` exist as role labels only. Live accounts are patient, doctor, and admin.
+- Bed tab and Hospital Analytics tab and Audit Logs tab are static preview text. The bed counts are hardcoded. Audit lines are not read from the database.
+- No prescription QR, no gate QR, no prescription OCR, no template NLG, no trained waiting-time or demand-forecast model. Timestamps in `hospital_events` are the dataset groundwork only.
+- Department routing lives inside the NLP service. There is no separate decision-engine module. Psychiatry is not a routed department. Doctor roster departments are Cardiology, Dermatology, ENT, Endocrinology, Gastroenterology, General Medicine, Neurology, Obstetrics & Gynecology, Ophthalmology, Orthopedics, Pulmonology, and Urology.
+- Volunteer and CSR admin routes are not locked with `require_roles`. Live CSR and volunteer collections were empty at last check.
+
+Do not treat the old "~82% / React 18 / port 8000 / QR on the slip / 6 enforced roles" status note as current fact. Re-check the code before claiming a feature is live.

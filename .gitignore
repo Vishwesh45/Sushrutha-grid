@@ -1,0 +1,61 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
+
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+frontend/.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Node / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs & scratch
+*.log
+scratch/
+tmp/
+temp/
+
+# ML model caches (large; optional local)
+*.pt
+*.bin
+backend/data/nlp/models/**/model
+**/whisper_cache/
+
+# Cursor local (keep shared project rules)
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**

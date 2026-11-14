@@ -1,0 +1,5 @@
+# Optional heavy ML stack for local / GPU machines.
+# Do NOT install on Render free tier — core API uses rules NLP + typed intake.
+-r requirements.txt
+openai-whisper
+spacy>=3.7,<3.8

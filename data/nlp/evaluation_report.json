@@ -1,0 +1,63 @@
+{
+  "per_entity": {
+    "SYMPTOM": {
+      "precision": 98.1,
+      "recall": 96.71,
+      "f1_score": 97.4,
+      "support": 213
+    },
+    "BODY_PART": {
+      "precision": 99.22,
+      "recall": 98.45,
+      "f1_score": 98.83,
+      "support": 129
+    },
+    "SEVERITY": {
+      "precision": 96.92,
+      "recall": 95.45,
+      "f1_score": 96.18,
+      "support": 66
+    },
+    "DURATION": {
+      "precision": 98.32,
+      "recall": 96.69,
+      "f1_score": 97.5,
+      "support": 121
+    },
+    "FREQUENCY": {
+      "precision": 100.0,
+      "recall": 98.18,
+      "f1_score": 99.08,
+      "support": 55
+    },
+    "ONSET": {
+      "precision": 87.5,
+      "recall": 93.33,
+      "f1_score": 90.32,
+      "support": 15
+    },
+    "NEGATION": {
+      "precision": 97.5,
+      "recall": 100.0,
+      "f1_score": 98.73,
+      "support": 39
+    },
+    "UNCERTAINTY": {
+      "precision": 100.0,
+      "recall": 100.0,
+      "f1_score": 100.0,
+      "support": 15
+    }
+  },
+  "macro_avg": {
+    "precision": 97.19,
+    "recall": 97.35,
+    "f1_score": 97.26
+  },
+  "micro_avg": {
+    "precision": 98.15,
+    "recall": 97.24,
+    "f1_score": 97.69
+  },
+  "total_test_samples": 143
+}
