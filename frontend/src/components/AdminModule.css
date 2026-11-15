@@ -275,7 +275,73 @@
   min-width: 0;
 }
 
-/* Plain decision analytics */
+/* Plain decision analytics — template-style, no fancy plots */
+.admin-decision-board {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-decision-board-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-decision-board-head h4 {
+  margin: 0 0 4px;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #111827;
+}
+
+.admin-decision-board-head p {
+  margin: 0;
+  max-width: 560px;
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.45;
+}
+
+.admin-action-strip {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #0f172a;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.admin-action-strip-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.admin-action-strip ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-action-item {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.admin-action-item--bad { color: #b91c1c; }
+.admin-action-item--warn { color: #b45309; }
+.admin-action-item--ok { color: #047857; }
+
 .admin-kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -283,14 +349,20 @@
   margin-bottom: 14px;
 }
 
+.admin-kpi-row--template {
+  margin-bottom: 0;
+}
+
 .admin-kpi-card {
+  position: relative;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  padding: 14px 16px;
+  padding: 16px 16px 14px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 118px;
 }
 
 .admin-kpi-card span {
@@ -302,7 +374,7 @@
 }
 
 .admin-kpi-card strong {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 900;
   color: #111827;
   line-height: 1.1;
@@ -319,10 +391,40 @@
   color: #b91c1c;
 }
 
+.admin-kpi-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-style: normal;
+}
+
+.admin-kpi-badge--ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.admin-kpi-badge--bad {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.admin-kpi-badge--neutral {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .admin-decision-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 12px;
+}
+
+.admin-decision-grid--template {
+  margin-top: 2px;
 }
 
 .admin-decision-card {
@@ -344,6 +446,93 @@
   font-size: 0.8rem;
   color: #6b7280;
   line-height: 1.4;
+}
+
+.admin-mix-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 8px 16px;
+  margin-bottom: 8px;
+}
+
+.admin-mix-hero strong {
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.admin-mix-hero span {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-mix-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.admin-mix-legend div {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-mix-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.admin-mix-legend b {
+  color: #0f172a;
+}
+
+.admin-stat-triples {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-stat-triples div {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+}
+
+.admin-stat-triples strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.admin-stat-triples span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.admin-bar-sub {
+  font-style: normal;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .admin-bar-row {
@@ -515,6 +704,14 @@
 @media (max-width: 480px) {
   .admin-kpi-row {
     grid-template-columns: 1fr;
+  }
+
+  .admin-stat-triples {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-mix-hero strong {
+    font-size: 2.2rem;
   }
 }
 

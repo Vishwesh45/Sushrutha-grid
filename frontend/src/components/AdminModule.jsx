@@ -44,7 +44,7 @@ const ADMIN_NAV = [
   {
     group: 'Insights',
     items: [
-      { id: 'analytics', label: 'Hospital pulse', hint: 'Staffing & footfall', icon: Activity },
+        { id: 'analytics', label: 'Decisions today', hint: 'Clear ops numbers', icon: Activity },
       { id: 'reviews', label: 'Ratings', hint: 'Patient feedback', icon: Award },
       { id: 'audit', label: 'Audit log', hint: 'Events & sessions', icon: ShieldAlert },
     ],
@@ -2163,17 +2163,32 @@ export default function AdminModule() {
       {/* ========================================================== */}
       {activeAdminTab === 'analytics' && (() => {
         const triage = hospitalInsights?.opd_today?.triage || {};
+        const redN = triage.RED || 0;
+        const amberN = triage.AMBER || 0;
+        const greenN = triage.GREEN || 0;
         const tokenTotal = Math.max(1, hospitalInsights?.opd_today?.tokens || 0);
+        const redPct = Math.round((redN / tokenTotal) * 100);
         const deptRows = hospitalInsights?.opd_today?.by_department || [];
         const maxDept = Math.max(1, ...deptRows.map((d) => d.count || 0));
         const staffRows = hospitalInsights?.doctors?.staffing_by_department || [];
         const maxStaff = Math.max(1, ...staffRows.map((d) => d.total || 0));
+        const pendingApps = hospitalInsights?.partners?.pending_volunteer_applications || 0;
+        const bedsFree = hospitalInsights?.beds?.available_beds || 0;
+        const occPct = hospitalInsights?.beds?.occupancy_pct || 0;
+        const actions = [];
+        if (redN >= 3) actions.push({ tone: 'bad', text: `Open extra senior chambers — ${redN} RED emergencies today.` });
+        if (pendingApps > 0) actions.push({ tone: 'warn', text: `Review ${pendingApps} NGO application${pendingApps === 1 ? '' : 's'} waiting for Accept / Reject.` });
+        if (occPct >= 85) actions.push({ tone: 'warn', text: `Bed pressure high (${occPct}% occupied) — free discharge beds first.` });
+        if (bedsFree === 0 && (hospitalInsights?.beds?.total_beds || 0) > 0) actions.push({ tone: 'bad', text: 'No free beds left — hold non-urgent admissions.' });
+        if (actions.length === 0) actions.push({ tone: 'ok', text: 'No urgent flags right now. Keep watching OPD footfall and RED count.' });
+
         return (
-        <div className="card admin-plain-analytics" style={{ padding: '22px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+        <div className="admin-decision-board">
+          <div className="admin-decision-board-head">
             <div>
-              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.45, maxWidth: 640 }}>
-                Simple numbers for decisions: how busy OPD is today, which departments need staff, bed pressure, and open partner work.
+              <h4>Today at a glance</h4>
+              <p>
+                Big numbers and simple bars only — so any duty officer can see what needs action without reading charts.
               </p>
             </div>
             <button type="button" className="btn btn-outline" onClick={fetchHospitalInsights} disabled={loadingHospitalInsights}>
@@ -2182,47 +2197,91 @@ export default function AdminModule() {
           </div>
 
           {loadingHospitalInsights && !hospitalInsights ? (
-            <p style={{ color: '#64748b' }}>Loading…</p>
+            <p className="admin-muted">Loading today’s numbers…</p>
           ) : !hospitalInsights ? (
             <div className="admin-empty-hint">No data yet. Sign in as admin and refresh.</div>
           ) : (
             <>
-              <div className="admin-kpi-row">
+              <div className="admin-action-strip">
+                <div className="admin-action-strip-title">Do this now</div>
+                <ul>
+                  {actions.map((a) => (
+                    <li key={a.text} className={`admin-action-item admin-action-item--${a.tone}`}>{a.text}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="admin-kpi-row admin-kpi-row--template">
+                <div className="admin-kpi-card">
+                  <span>OPD patients today</span>
+                  <strong>{hospitalInsights.opd_today?.tokens || 0}</strong>
+                  <em>Tokens issued · footfall load</em>
+                  <b className="admin-kpi-badge admin-kpi-badge--neutral">Live</b>
+                </div>
+                <div className={`admin-kpi-card ${redN >= 3 ? 'admin-kpi-warn' : ''}`}>
+                  <span>Emergency RED</span>
+                  <strong>{redN}</strong>
+                  <em>{redPct}% of today’s tokens</em>
+                  <b className={`admin-kpi-badge ${redN >= 3 ? 'admin-kpi-badge--bad' : 'admin-kpi-badge--ok'}`}>
+                    {redN >= 3 ? 'Act' : 'OK'}
+                  </b>
+                </div>
                 <div className="admin-kpi-card">
                   <span>Doctors on roster</span>
                   <strong>{hospitalInsights.doctors?.total || 0}</strong>
-                  <em>Available to assign OPD</em>
+                  <em>Ready to cover OPD desks</em>
+                  <b className="admin-kpi-badge admin-kpi-badge--ok">Staffed</b>
                 </div>
-                <div className="admin-kpi-card">
-                  <span>OPD tokens today</span>
-                  <strong>{hospitalInsights.opd_today?.tokens || 0}</strong>
-                  <em>Patient footfall today</em>
-                </div>
-                <div className="admin-kpi-card admin-kpi-warn">
-                  <span>Emergency (RED)</span>
-                  <strong>{triage.RED || 0}</strong>
-                  <em>Need senior chambers first</em>
-                </div>
-                <div className="admin-kpi-card">
+                <div className={`admin-kpi-card ${occPct >= 85 ? 'admin-kpi-warn' : ''}`}>
                   <span>Beds free</span>
-                  <strong>{hospitalInsights.beds?.available_beds || 0}</strong>
-                  <em>{hospitalInsights.beds?.occupancy_pct || 0}% occupied overall</em>
+                  <strong>{bedsFree}</strong>
+                  <em>{occPct}% occupied of {hospitalInsights.beds?.total_beds || 0}</em>
+                  <b className={`admin-kpi-badge ${occPct >= 85 ? 'admin-kpi-badge--bad' : 'admin-kpi-badge--ok'}`}>
+                    {occPct >= 85 ? 'Tight' : 'OK'}
+                  </b>
                 </div>
               </div>
 
-              <div className="admin-decision-grid">
+              <div className="admin-decision-grid admin-decision-grid--template">
                 <div className="admin-decision-card">
-                  <h4>Triage mix today</h4>
-                  <p>Share of today’s tokens by urgency — use this to open extra senior desks if RED/AMBER rise.</p>
+                  <h4>Where patients went</h4>
+                  <p>Top departments by tokens today — send extra help to the longest bars first.</p>
+                  {deptRows.length === 0 ? (
+                    <p className="admin-muted">No tokens today yet.</p>
+                  ) : deptRows.slice(0, 6).map((row, idx) => (
+                    <div key={row.department} className="admin-bar-row">
+                      <div className="admin-bar-meta">
+                        <span><b style={{ color: '#94a3b8', marginRight: 6 }}>{idx + 1}.</b>{row.department}</span>
+                        <strong>{row.count}</strong>
+                      </div>
+                      <div className="admin-bar-track">
+                        <div className="admin-bar-fill" style={{ width: `${(row.count / maxDept) * 100}%`, background: '#0f172a' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="admin-decision-card admin-decision-card--mix">
+                  <h4>Urgency mix</h4>
+                  <p>How serious today’s queue is — if Emergency share climbs, open senior desks.</p>
+                  <div className="admin-mix-hero">
+                    <strong>{redPct}%</strong>
+                    <span>Emergency share</span>
+                  </div>
+                  <div className="admin-mix-legend">
+                    <div><i style={{ background: '#dc2626' }} /> Emergency <b>{redN}</b></div>
+                    <div><i style={{ background: '#d97706' }} /> Urgent <b>{amberN}</b></div>
+                    <div><i style={{ background: '#059669' }} /> Routine <b>{greenN}</b></div>
+                  </div>
                   {[
-                    { key: 'RED', label: 'Emergency', color: '#dc2626', n: triage.RED || 0 },
-                    { key: 'AMBER', label: 'Urgent', color: '#d97706', n: triage.AMBER || 0 },
-                    { key: 'GREEN', label: 'Routine', color: '#059669', n: triage.GREEN || 0 },
+                    { label: 'Emergency', color: '#dc2626', n: redN },
+                    { label: 'Urgent', color: '#d97706', n: amberN },
+                    { label: 'Routine', color: '#059669', n: greenN },
                   ].map((row) => (
-                    <div key={row.key} className="admin-bar-row">
+                    <div key={row.label} className="admin-bar-row">
                       <div className="admin-bar-meta">
                         <span>{row.label}</span>
-                        <strong>{row.n} ({Math.round((row.n / tokenTotal) * 100)}%)</strong>
+                        <strong>{row.n}</strong>
                       </div>
                       <div className="admin-bar-track">
                         <div className="admin-bar-fill" style={{ width: `${(row.n / tokenTotal) * 100}%`, background: row.color }} />
@@ -2232,33 +2291,15 @@ export default function AdminModule() {
                 </div>
 
                 <div className="admin-decision-card">
-                  <h4>Busiest departments today</h4>
-                  <p>Where patients are landing — reinforce these OPDs first.</p>
-                  {deptRows.length === 0 ? (
-                    <p className="admin-muted">No tokens today yet.</p>
-                  ) : deptRows.slice(0, 8).map((row) => (
-                    <div key={row.department} className="admin-bar-row">
-                      <div className="admin-bar-meta">
-                        <span>{row.department}</span>
-                        <strong>{row.count}</strong>
-                      </div>
-                      <div className="admin-bar-track">
-                        <div className="admin-bar-fill" style={{ width: `${(row.count / maxDept) * 100}%`, background: '#2563eb' }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="admin-decision-card">
-                  <h4>Staff by department</h4>
-                  <p>How many doctors you already have posted (SR / JR).</p>
+                  <h4>Staff posted by department</h4>
+                  <p>Who you already have on the floor (senior vs junior) — fill gaps where bars are short but patient bars are long.</p>
                   {staffRows.length === 0 ? (
                     <p className="admin-muted">No roster data.</p>
-                  ) : staffRows.slice(0, 10).map((row) => (
+                  ) : staffRows.slice(0, 8).map((row) => (
                     <div key={row.department} className="admin-bar-row">
                       <div className="admin-bar-meta">
                         <span>{row.department}</span>
-                        <strong>{row.total} <em style={{ fontStyle: 'normal', fontWeight: 600, color: '#64748b' }}>({row.senior} SR · {row.junior} JR)</em></strong>
+                        <strong>{row.total} <em className="admin-bar-sub">({row.senior} SR · {row.junior} JR)</em></strong>
                       </div>
                       <div className="admin-bar-track">
                         <div className="admin-bar-fill" style={{ width: `${(row.total / maxStaff) * 100}%`, background: '#0f766e' }} />
@@ -2268,18 +2309,25 @@ export default function AdminModule() {
                 </div>
 
                 <div className="admin-decision-card">
-                  <h4>Action checklist</h4>
-                  <p>Quick partner / ward signals — no charts needed.</p>
+                  <h4>Partners & wards</h4>
+                  <p>Counts that need a yes/no today — no graphs, just work items.</p>
+                  <div className="admin-stat-triples">
+                    <div>
+                      <strong>{pendingApps}</strong>
+                      <span>NGO apps pending</span>
+                    </div>
+                    <div>
+                      <strong>{hospitalInsights.partners?.open_volunteer_requisitions || 0}</strong>
+                      <span>Open volunteer posts</span>
+                    </div>
+                    <div>
+                      <strong>{hospitalInsights.partners?.open_csr_requirements || 0}</strong>
+                      <span>CSR lists open</span>
+                    </div>
+                  </div>
                   <ul className="admin-action-list">
-                    <li><strong>{hospitalInsights.partners?.pending_volunteer_applications || 0}</strong> NGO applications waiting for Accept / Reject</li>
-                    <li><strong>{hospitalInsights.partners?.open_volunteer_requisitions || 0}</strong> volunteer openings still public</li>
-                    <li><strong>{hospitalInsights.partners?.open_csr_requirements || 0}</strong> CSR lists open or pledged</li>
-                    <li><strong>{hospitalInsights.beds?.available_beds || 0}</strong> beds free of <strong>{hospitalInsights.beds?.total_beds || 0}</strong> total</li>
-                    <li>
-                      {(triage.RED || 0) >= 3
-                        ? 'RED load is elevated — prefer senior chambers for new RED tokens.'
-                        : 'RED load looks manageable right now.'}
-                    </li>
+                    <li>Beds free: <strong>{bedsFree}</strong> / {hospitalInsights.beds?.total_beds || 0}</li>
+                    <li>Occupancy: <strong>{occPct}%</strong></li>
                   </ul>
                 </div>
               </div>
@@ -2311,8 +2359,7 @@ export default function AdminModule() {
                   setAuditEventFilter(e.target.value);
                   fetchAuditLogs(e.target.value);
                 }}
-                className="filter-select"
-                className="admin-filter-select-fluid"
+                className="filter-select admin-filter-select-fluid"
               >
                 <option value="ALL">All event types</option>
                 {(auditData?.event_types || []).map((t) => (
