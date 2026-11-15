@@ -1,325 +1,197 @@
 /**
- * First-time user guide — end-to-end workflows first, then module reference.
+ * Plain-language how-to. Written so a first-time user (or anyone) can follow without jargon.
  */
 
-/** Cross-role journeys: what actually happens in the hospital day */
-export const HOW_TO_JOURNEYS = [
+export const HOW_TO_ROLES = [
   {
-    id: 'opd-day',
-    title: 'Full OPD visit (patient → doctor → Rx)',
-    summary:
-      'One patient walkthrough from arrival to digital prescription. Phone, doctor desk, and lobby TV stay on the same live queue.',
-    actors: ['Patient', 'Reception / Admin', 'Doctor', 'Lobby TV'],
+    id: 'patient',
+    label: 'I am a patient',
+    path: '/patient',
+    button: 'Go to patient page',
+    oneLine: 'You tell your symptoms, take a token, wait for your turn, then get a digital medicine slip.',
     steps: [
       {
-        title: 'Patient registers and opens Care',
-        detail:
-          'Patient signs in at /patient. Care → Consult is used to type or speak the chief complaint. The app runs clinical NLP: department suggestion + GREEN / AMBER / RED urgency.',
-        sync: 'Nothing on the doctor desk yet — no token until check-in + submit succeed.',
+        do: 'Open the Patient page and sign in (or create an account).',
+        screen: 'Home page → “I am a patient”, or open /patient. Use Sign in / Register.',
       },
       {
-        title: 'Admin publishes desk code; patient checks in',
-        detail:
-          'Admin → Reception generates today’s short desk code. At the hospital counter, patient opens Find → Desk code, enters the code, and unlocks digital OPD for that hospital.',
-        sync: 'Check-in is hospital-scoped (Victoria digital OPD). Without it, token issue stays blocked.',
+        do: 'At the hospital counter, ask for the desk code and enter it in the app.',
+        screen: 'Bottom tabs → Find → Desk code. Type the short code the receptionist shows you.',
       },
       {
-        title: 'Patient submits consult → OPD token WAITING',
-        detail:
-          'After check-in, submit the consultation. The system issues an OPD token (e.g. GM-102), assigns department/room rationale, and sets status WAITING. Priority order: RED, then AMBER, then GREEN; same priority is first-come-first-served.',
-        sync: 'WebSocket TOKEN_ISSUED. Doctor desk queue for that department gains a new WAITING row. Patient Home shows token + patients ahead.',
+        do: 'Describe how you feel (type or speak). The app suggests which department and how urgent it is.',
+        screen: 'Bottom tabs → Care → Consult. Use the mic or the text box, then submit.',
       },
       {
-        title: 'Doctor calls next in line only → CALLED',
-        detail:
-          'Doctor opens /doctor → Waiting patients. Only the head of WAITING is callable (is_next_callable). Call → status CALLED. Calling anyone later in line returns an error.',
-        sync: 'TOKEN_CALLED fires. Patient phone shows “go to chamber”. Lobby TV shows Now calling + chime + room. Admin OPD analytics update.',
+        do: 'You get an OPD token number. Wait. Watch your phone.',
+        screen: 'Bottom tabs → Home. You will see your token and “waiting”.',
       },
       {
-        title: 'Doctor starts consultation → IN_CONSULTATION',
-        detail:
-          'When the patient is in the chamber, doctor taps Start consultation. Status becomes IN_CONSULTATION. Clinical notes / Rx builder unlock only now.',
-        sync: 'CONSULTATION_STARTED. Patient status updates to in-consult. Prescription tab stays locked until this status.',
+        do: 'When your phone says you are called, go to the room shown (the lobby TV also shows your number).',
+        screen: 'Home turns to “called” / go to chamber. Lobby screen shows the same number.',
       },
       {
-        title: 'Doctor writes Rx → COMPLETED',
-        detail:
-          'Doctor opens Digital prescription, adds medicines, advice, follow-up text, and issues the slip. Token becomes COMPLETED. Skipped or waiting patients cannot receive an Rx.',
-        sync: 'PRESCRIPTION_ISSUED. Patient sees Rx on Home / Me → Records. Doctor moves the visit under Completed. Lobby no longer shows that token as calling.',
+        do: 'After the doctor finishes, open your medicine slip on your phone. You can rate the visit if you want.',
+        screen: 'Home or Me → Records for the prescription. Me → Reviews to give feedback.',
       },
       {
-        title: 'Optional: patient rates the visit',
-        detail:
-          'Patient Me → Reviews rates facility, department, doctor, and waiting area. Admin Performance later shows Hospital | Doctors boards from those ratings.',
-        sync: 'Review events feed admin insights; they do not change the queue token.',
+        do: 'If you missed your turn, the app may say “skipped”. Tap Re-join to get back in line.',
+        screen: 'Home shows Skipped + a Re-join button.',
       },
     ],
   },
   {
-    id: 'queue-sync',
-    title: 'Queue lifecycle & patient↔doctor sync',
-    summary:
-      'How one shared queue (`opd_tokens`) keeps phone and chamber aligned — including skip and rejoin.',
-    actors: ['Patient phone', 'Doctor desk', 'Lobby TV'],
+    id: 'doctor',
+    label: 'I am a doctor',
+    path: '/doctor',
+    button: 'Go to doctor desk',
+    oneLine: 'You see who is waiting, call the next person, examine them, then write the digital prescription.',
     steps: [
       {
-        title: 'Statuses you will see',
-        detail:
-          'WAITING (in line) → CALLED (summoned) → IN_CONSULTATION (in chamber) → COMPLETED (done with Rx). Branch: SKIPPED if the patient does not respond after call / grace skip.',
-        sync: 'Same status string is stored once in Mongo and read by patient my-token and doctor queue.',
+        do: 'Open the Doctor desk and sign in with your doctor account.',
+        screen: 'Home → “I am a doctor”, or open /doctor.',
       },
       {
-        title: 'Who is “next”',
-        detail:
-          'Next = highest priority WAITING token for that hospital + department, then earliest created_at. Doctor UI marks only that token callable. Others show as locked / later.',
-        sync: 'Trying to Call a non-next token fails with “Call next in line only”.',
+        do: 'Look at Waiting patients. Only the next person in line can be called (you cannot jump ahead).',
+        screen: 'Tab “Waiting patients”. The next token has Call enabled; later ones stay locked.',
       },
       {
-        title: 'Skip (no-show)',
-        detail:
-          'Doctor Skip marks SKIPPED. Patient is out of chamber for prescribing. Phone shows skipped + Re-join. Write prescription is hidden/disabled; API also rejects Rx on SKIPPED.',
-        sync: 'PATIENT_SKIPPED event. Lobby stops treating them as the active call.',
+        do: 'Tap Call for the next patient. Their phone and the lobby TV both update.',
+        screen: 'Call button on that row. Patient phone + lobby show “now calling”.',
       },
       {
-        title: 'Rejoin',
-        detail:
-          'Within the grace idea, patient taps Re-join queue → status returns to WAITING and they re-enter priority order (not automatically front of line ahead of higher priority).',
-        sync: 'TOKEN_REJOINED. Doctor desk sees them WAITING again when they become next by rules.',
+        do: 'When they enter your room, tap Start consultation.',
+        screen: 'Start consultation. Status becomes in consultation.',
       },
       {
-        title: 'Multiple patients example',
-        detail:
-          'Three tokens: AMBER then two GREENs. Doctor must Call the AMBER first. After AMBER is IN_CONSULTATION, the next GREEN becomes callable. Completing AMBER with Rx frees the line; rejoined/skipped GREENs compete again by priority + time.',
-        sync: 'Each patient’s my-token only reflects their own row; the doctor sees the full department board.',
+        do: 'Only now write the prescription. If they did not come, tap Skip instead — you cannot write a prescription for a skipped patient.',
+        screen: '“Write prescription” / Digital prescription tab works only during consultation. Skip = no prescription.',
+      },
+      {
+        do: 'Issue the prescription. That visit is finished. See past visits under Completed.',
+        screen: 'Digital prescription → issue. Then Completed tab.',
       },
     ],
   },
   {
-    id: 'admin-day',
-    title: 'Admin floor ops (desk code → roster → watch)',
-    summary:
-      'What hospital admin does before and during the OPD day so patients and doctors can run digital OPD.',
-    actors: ['Admin'],
+    id: 'admin',
+    label: 'I am hospital admin',
+    path: '/admin',
+    button: 'Go to admin center',
+    oneLine: 'You set the desk code, manage doctors, watch the day’s queue, and handle NGO / CSR requests.',
     steps: [
       {
-        title: 'Publish Reception desk code',
-        detail:
-          'Admin → Reception generates the code patients type under Find → Desk code. Rotate/regenerate as needed for the shift.',
-        sync: 'Without a valid redeem, patient digital OPD check-in fails.',
+        do: 'Sign in as admin and open the Admin center.',
+        screen: 'Home → “Hospital admin”, or open /admin.',
       },
       {
-        title: 'Keep Doctors roster current',
-        detail:
-          'Admin → Doctors: rooms, shifts, departments, AVAILABLE / BUSY / OFF. Chamber assignment and queue routing lean on this roster.',
-        sync: 'Doctor desk login matches roster email; patients see assigned room text on tokens.',
+        do: 'Create today’s desk code so patients can check in on their phones.',
+        screen: 'Side menu → Reception. Generate / show the code.',
       },
       {
-        title: 'Watch OPD queue & Decisions today',
-        detail:
-          'OPD queue tab = token volumes / department load. Decisions today = clear ops numbers for the shift. Beds = live ward occupancy.',
-        sync: 'Reads the same token and roster data doctors produce; does not replace Call/Consult on the doctor desk.',
+        do: 'Keep the doctor list correct (room, shift, available or not).',
+        screen: 'Side menu → Doctors.',
       },
       {
-        title: 'Performance & Audit',
-        detail:
-          'Performance splits Hospital vs Doctors from patient ratings (CSV export for doctor rows). Audit log lists hospital_events and sessions.',
-        sync: 'Filled after visits/reviews — end-of-day accountability, not the live call flow.',
+        do: 'Watch how many tokens came today (you do not call patients from here — doctors do that).',
+        screen: 'OPD queue and Decisions today.',
+      },
+      {
+        do: 'For volunteers: post what help you need, then Accept NGO applications.',
+        screen: 'NGO / Volunteers → post need, then check applications.',
+      },
+      {
+        do: 'For CSR: post equipment needs. When companies show interest, Accept one. When items arrive, mark Fulfilled.',
+        screen: 'CSR funding → Requirements, then Company Interests → Accept, later Mark fulfilled.',
+      },
+      {
+        do: 'Read ratings under Performance (hospital vs doctors).',
+        screen: 'Performance tab.',
       },
     ],
   },
   {
-    id: 'volunteer-pipe',
-    title: 'NGO volunteer pipeline',
-    summary:
-      'Hospital asks for help → NGO applies → admin Accept / Deploy. Both portals stay synced.',
-    actors: ['Admin', 'NGO / Volunteer portal'],
+    id: 'lobby',
+    label: 'I run the lobby TV',
+    path: '/lobby-display',
+    button: 'Open lobby screen',
+    oneLine: 'Put this page on a big screen in the waiting hall. It shows which token is being called.',
     steps: [
       {
-        title: 'Admin posts a requisition',
-        detail:
-          'Admin → NGO / Volunteers → Request Volunteers: title, department, headcount, daily duration, total days, notes.',
-        sync: 'Opening appears on /volunteer hospital openings list.',
+        do: 'Open the lobby page on a TV or tablet facing the seats. No login needed.',
+        screen: 'Open /lobby-display and leave it on.',
       },
       {
-        title: 'NGO applies as an organization',
-        detail:
-          'Footer NGO → register/sign in → pick opening → Apply as NGO (team size, skills, liaison).',
-        sync: 'Application lands in Admin → Check NGO Requests as PENDING.',
+        do: 'When a doctor calls a patient, the big number appears and a sound plays.',
+        screen: '“Now calling” + room name on the TV.',
       },
       {
-        title: 'Admin Accept → Deploy',
-        detail:
-          'Admin Accepts a suitable NGO, then Mark deployed when the team is on site. Reject closes a bad fit.',
-        sync: 'NGO Our applications shows ACCEPTED / REJECTED / DEPLOYED live.',
+        do: 'Patients look at the TV (and their phone) and walk to that room.',
+        screen: 'Same call as the doctor desk — you do not type anything.',
       },
     ],
   },
   {
-    id: 'csr-pipe',
-    title: 'CSR funding pipeline',
-    summary:
-      'Interest is non-locking. Admin Accept picks one sponsor; then pledge lock and fulfill.',
-    actors: ['Admin', 'CSR company portal'],
+    id: 'ngo',
+    label: 'I am from an NGO',
+    path: '/volunteer',
+    button: 'Go to NGO portal',
+    oneLine: 'The hospital posts volunteer needs. Your NGO applies. Admin accepts your team.',
     steps: [
       {
-        title: 'Admin posts requirement list',
-        detail:
-          'Admin → CSR funding → Requirements: multi-item equipment list with priority and estimated cost. Status POSTED.',
-        sync: 'Visible on /csr Hospital requirements.',
+        do: 'Open the NGO portal from the website footer and register / sign in as an organization.',
+        screen: 'Footer → NGO → Register or Sign in. Then /volunteer.',
       },
       {
-        title: 'Companies Express interest',
-        detail:
-          'Several CSR accounts can submit interest (indicative amount, notes). List stays POSTED — interest does not lock the sponsorship.',
-        sync: 'Admin → Company Interests inbox shows PENDING rows; CSR My interests shows PENDING.',
+        do: 'See the hospital’s open requests (how many people, which area, how many days).',
+        screen: '“Open hospital openings” list.',
       },
       {
-        title: 'Admin Accept one → CSR_PLEDGED',
-        detail:
-          'Accept → that company becomes csr_sponsor; requirement status CSR_PLEDGED; other PENDING interests on that list are auto-rejected. Offline Record Pledge still locks immediately if admin already agreed offline.',
-        sync: 'Accepted company sees ACCEPTED; losers see REJECTED; requirement shows committed sponsor banner.',
+        do: 'Apply with your NGO name and how many volunteers you can send.',
+        screen: '“Apply as NGO” form.',
       },
       {
-        title: 'Admin Mark Fulfilled',
-        detail:
-          'When goods arrive and are verified, admin Marks items received → FULFILLED. Only allowed after CSR_PLEDGED.',
-        sync: 'CSR listings show FULFILLED; audit/events record the close.',
+        do: 'Wait for the hospital to Accept (then Deploy when you are on site). Check your status anytime.',
+        screen: '“Our applications” — Pending / Accepted / Deployed / Rejected.',
+      },
+    ],
+  },
+  {
+    id: 'csr',
+    label: 'I am from a CSR company',
+    path: '/csr',
+    button: 'Go to CSR portal',
+    oneLine: 'The hospital lists equipment needs. You show interest. Admin chooses one sponsor, then confirms when goods arrive.',
+    steps: [
+      {
+        do: 'Open the CSR portal from the footer and register / sign in as your company.',
+        screen: 'Footer → CSR → Register or Sign in. Then /csr.',
+      },
+      {
+        do: 'Browse the hospital’s posted requirement lists (items and cost).',
+        screen: '“Hospital requirements”.',
+      },
+      {
+        do: 'Click Express interest. This does not lock the list — other companies can also apply.',
+        screen: 'Express interest form → Submit interest.',
+      },
+      {
+        do: 'Hospital admin Accepts one company. If it is you, you are the sponsor. If not, your interest is rejected.',
+        screen: '“My interests” shows Pending / Accepted / Rejected.',
+      },
+      {
+        do: 'When the hospital receives the items, they mark the list Fulfilled.',
+        screen: 'The requirement status becomes Fulfilled on the listings.',
       },
     ],
   },
 ];
 
-/** Per-module reference (tabs + role-specific workflow) */
-export const HOW_TO_MODULES = [
-  {
-    id: 'patient',
-    title: 'Patient',
-    path: '/patient',
-    cta: 'Open patient care',
-    who: 'Anyone seeking OPD care at a government hospital in the grid.',
-    start: 'Open Patient care, register or sign in, then use Home · Care · Find · Me.',
-    workflow: [
-      'Sign in so tokens and prescriptions stay on your account.',
-      'Find → Desk code: redeem today’s reception code when you arrive.',
-      'Care → Consult: speak or type symptoms → see department + GREEN/AMBER/RED → submit for a WAITING token.',
-      'Stay on Home while waiting. When status becomes CALLED, go to the shown chamber (lobby TV will also announce).',
-      'If SKIPPED, tap Re-join queue to return to WAITING.',
-      'After COMPLETED, open the digital Rx from Home or Me → Records; optionally Me → Reviews.',
-    ],
-    tabs: [
-      { name: 'Home', detail: 'Live token, call alerts, Rx ready links.' },
-      { name: 'Care → Consult', detail: 'Voice/text intake, triage, department routing, token issue.' },
-      { name: 'Care → Ask', detail: 'Simple in-visit assistant.' },
-      { name: 'Care → Follow-ups', detail: 'Doctor follow-up reminders / due badges.' },
-      { name: 'Find → Nearby', detail: 'GPS map of nearby government hospitals.' },
-      { name: 'Find → Live OPD', detail: 'Which digital OPD sessions are active.' },
-      { name: 'Find → Desk code', detail: 'Reception check-in code entry.' },
-      { name: 'Me → Records', detail: 'Past visits and printable prescriptions.' },
-      { name: 'Me → Reviews', detail: 'Rate facility, department, doctor, waiting area.' },
-    ],
-  },
-  {
-    id: 'doctor',
-    title: 'Doctor',
-    path: '/doctor',
-    cta: 'Open doctor desk',
-    who: 'OPD doctors with roster-linked accounts.',
-    start: 'Sign in at Doctor desk. Use Waiting patients · Consultation · Digital prescription · Completed.',
-    workflow: [
-      'Open Waiting patients — only the next WAITING token is callable.',
-      'Call → patient + lobby update to CALLED. Do not call later tokens out of order.',
-      'When they enter chamber: Start consultation → IN_CONSULTATION (this unlocks Write prescription).',
-      'If no-show: Skip → SKIPPED (no Rx allowed). Patient may rejoin later as WAITING.',
-      'Write prescription only in IN_CONSULTATION → issues Rx and marks COMPLETED.',
-      'Use Completed for today’s finished visits / view issued Rx.',
-    ],
-    tabs: [
-      { name: 'Waiting patients', detail: 'Department queue with Call / Consult / Skip; sequential lock.' },
-      { name: 'Consultation', detail: 'Dossier + notes for the opened token; Rx button only if IN_CONSULTATION.' },
-      { name: 'Digital prescription', detail: 'Medicines, advice, follow-up; blocked unless in chamber.' },
-      { name: 'Completed', detail: 'Finished tokens and view/download Rx.' },
-    ],
-  },
-  {
-    id: 'admin',
-    title: 'Hospital admin',
-    path: '/admin',
-    cta: 'Open admin center',
-    who: 'Hospital operations staff.',
-    start: 'Sign in as admin. Side menu (or ☰): Floor ops · Partners · Insights.',
-    workflow: [
-      'Reception: publish desk check-in code for patients.',
-      'Doctors: maintain roster (room, shift, status).',
-      'OPD queue / Decisions today / Beds: watch live load — do not call patients from here.',
-      'NGO: post needs; Accept/Reject/Deploy applications.',
-      'CSR: post lists; Accept one interest → pledge; Mark fulfilled when items arrive.',
-      'Performance + Audit: ratings boards and event history.',
-    ],
-    tabs: [
-      { name: 'Reception', detail: 'Desk code for patient check-in.' },
-      { name: 'Doctors', detail: 'Roster CRUD and live status.' },
-      { name: 'OPD queue', detail: 'Token analytics by day/dept.' },
-      { name: 'Beds', detail: 'Ward occupancy.' },
-      { name: 'NGO / Volunteers', detail: 'Requisitions + applications inbox.' },
-      { name: 'CSR funding', detail: 'Requirements + Company Interests + fulfill.' },
-      { name: 'Decisions today', detail: 'Clear shift ops numbers.' },
-      { name: 'Performance', detail: 'Hospital | Doctors ratings boards + CSV.' },
-      { name: 'Audit log', detail: 'Events and sessions.' },
-    ],
-  },
-  {
-    id: 'lobby',
-    title: 'Lobby TV',
-    path: '/lobby-display',
-    cta: 'Open lobby screen',
-    who: 'Waiting-hall display browser — no patient login.',
-    start: 'Open /lobby-display on a large screen facing seating.',
-    workflow: [
-      'Leave the page open on the hospital Wi-Fi / network.',
-      'When any doctor Calls a token, the board shows number + room and plays a chime.',
-      'Patients walk to the chamber; staff do not need to shout.',
-    ],
-    tabs: [
-      { name: 'Now calling', detail: 'Large token + department/room on CALLED.' },
-      { name: 'Sound cue', detail: 'Chime on new call events.' },
-      { name: 'Room guide', detail: 'Where to walk.' },
-    ],
-  },
-  {
-    id: 'ngo',
-    title: 'NGO volunteers',
-    path: '/volunteer',
-    cta: 'Open NGO portal',
-    who: 'Registered NGO organizations (footer → NGO).',
-    start: 'Register/sign in as volunteer/NGO, then apply to openings.',
-    workflow: [
-      'Browse Open hospital openings posted by admin.',
-      'Apply as NGO with team size and skills.',
-      'Track Our applications: PENDING → ACCEPTED → DEPLOYED (or REJECTED).',
-    ],
-    tabs: [
-      { name: 'Hospital openings', detail: 'Live requisitions.' },
-      { name: 'Apply as NGO', detail: 'Submit against a requisition.' },
-      { name: 'Our applications', detail: 'Status history for your NGO.' },
-    ],
-  },
-  {
-    id: 'csr',
-    title: 'CSR companies',
-    path: '/csr',
-    cta: 'Open CSR portal',
-    who: 'Corporate / foundation CSR accounts (footer → CSR).',
-    start: 'Register/sign in; company name is the account.',
-    workflow: [
-      'Browse POSTED hospital requirement lists.',
-      'Express interest (does not lock the list).',
-      'Wait for admin Accept → your interest ACCEPTED and list CSR_PLEDGED, or REJECTED if another sponsor was chosen.',
-      'Track My interests; fulfillment is marked by hospital admin when goods arrive.',
-    ],
-    tabs: [
-      { name: 'Hospital requirements', detail: 'Posted funding lists.' },
-      { name: 'Express interest', detail: 'Non-locking interest form.' },
-      { name: 'My interests', detail: 'PENDING / ACCEPTED / REJECTED.' },
-    ],
-  },
+/** Tiny big-picture strip — everyday words only */
+export const HOW_THE_DAY_WORKS = [
+  { n: '1', text: 'Patient checks in and gets a token' },
+  { n: '2', text: 'Doctor calls the next token' },
+  { n: '3', text: 'Phone + lobby TV both show the call' },
+  { n: '4', text: 'Doctor examines and writes the medicine slip' },
+  { n: '5', text: 'Patient opens the slip on their phone' },
 ];
