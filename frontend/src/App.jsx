@@ -12,6 +12,7 @@ import LobbyDisplayPage from './components/LobbyDisplayPage';
 import ReceptionDisplayPage from './components/ReceptionDisplayPage';
 import PrescriptionViewPage from './components/PrescriptionViewPage';
 import KnowledgeBaseAndRoadmap from './components/KnowledgeBaseAndRoadmap';
+import HowToUsePage from './components/HowToUsePage';
 import SiteFooter from './components/SiteFooter';
 import VolunteerPortal from './components/VolunteerPortal';
 import CSRPortal from './components/CSRPortal';
@@ -75,6 +76,7 @@ function AppLayout() {
           <Route path="/prescription/:prescription_id" element={<PrescriptionViewPage />} />
           <Route path="/knowledge-base" element={<KnowledgeBaseAndRoadmap />} />
           <Route path="/knowledge_base" element={<Navigate to="/knowledge-base" replace />} />
+          <Route path="/how-to-use" element={<HowToUsePage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </main>

@@ -71,6 +71,7 @@ export default function SiteFooter() {
             <div className="footer-col-body">
               <a href="tel:108">Emergency 108</a>
               <a href="tel:104">Blood bank 104</a>
+              <Link to="/how-to-use">How to use it</Link>
               <Link to="/knowledge-base">Knowledge base</Link>
             </div>
           </div>
