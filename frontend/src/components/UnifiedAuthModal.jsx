@@ -314,7 +314,7 @@ export default function UnifiedAuthModal({
         </div>
 
         <div style={{ padding: '20px 22px 22px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16, padding: 4, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+          <div className="auth-role-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16, padding: 4, background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0' }}>
             {ROLES.map((r) => {
               const Icon = r.icon;
               const active = role === r.id;
@@ -449,7 +449,7 @@ export default function UnifiedAuthModal({
                   <User size={15} style={{ position: 'absolute', left: 12, top: 12, color: '#94a3b8' }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="auth-field-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={labelStyle}>Mobile *</label>
                   <input
@@ -480,7 +480,7 @@ export default function UnifiedAuthModal({
                   />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="auth-field-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={labelStyle}>Age</label>
                   <input
@@ -505,7 +505,7 @@ export default function UnifiedAuthModal({
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="auth-field-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
                   <label style={labelStyle}>Password * (min 6)</label>
                   <input

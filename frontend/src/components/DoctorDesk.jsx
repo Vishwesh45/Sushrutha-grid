@@ -1485,20 +1485,11 @@ export default function DoctorDesk() {
                   </div>
 
                   {/* Dynamic medication rows */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div className="rx-med-list">
                     {rxForm.medications.map((med, idx) => (
                       <div
                         key={idx}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          padding: '12px',
-                          display: 'grid',
-                          gridTemplateColumns: 'minmax(180px, 1fr) 110px 100px 120px 100px minmax(130px, 1fr) 36px',
-                          gap: '8px',
-                          alignItems: 'center'
-                        }}
+                        className="rx-med-row"
                       >
                         <input
                           type="text"

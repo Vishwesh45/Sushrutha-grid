@@ -140,11 +140,18 @@
     grid-template-columns: 1fr;
   }
 
+  .patient-tab-nav {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .patient-tab-btn {
     flex-direction: column;
     gap: 3px;
     font-size: 0.72rem;
     padding: 9px 4px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
   }
 }
 

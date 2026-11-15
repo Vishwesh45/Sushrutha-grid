@@ -5,7 +5,7 @@ import {
   Calendar, Clock, Phone, Mail, Award, Briefcase, CheckCircle2, 
   AlertCircle, LogOut, BarChart3, Bed, Activity, Lock, X, Plus, 
   HeartHandshake, Gift, Check, FileText, PhoneCall, Play, CheckCheck, UserX,
-  ExternalLink
+  ExternalLink, Menu
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useHospitalWebSocket } from '../services/useHospitalWebSocket';
@@ -75,6 +75,7 @@ export default function AdminModule() {
 
   // Admin section sub-navigation: 'reception' | 'doctors' | 'volunteers' | 'csr' | 'queues' | 'beds' | 'analytics' | 'audit'
   const [activeAdminTab, setActiveAdminTab] = useState('reception');
+  const [sideNavOpen, setSideNavOpen] = useState(false);
 
   // Reception desk code (Victoria check-in)
   const [receptionCode, setReceptionCode] = useState(null);
@@ -759,9 +760,17 @@ export default function AdminModule() {
   // RENDER: FULL ADMIN WORKSPACE
   // ====================================================
   return (
-    <div className="admin-workspace admin-workspace--console">
+    <div className={`admin-workspace admin-workspace--console ${sideNavOpen ? 'admin-side-open' : ''}`}>
       <div className="admin-console-body">
-        <aside className="admin-side-nav" aria-label="Admin sections">
+        {sideNavOpen && (
+          <button
+            type="button"
+            className="admin-side-backdrop"
+            aria-label="Close admin menu"
+            onClick={() => setSideNavOpen(false)}
+          />
+        )}
+        <aside className={`admin-side-nav ${sideNavOpen ? 'is-open' : ''}`} aria-label="Admin sections">
           <div className="admin-side-brand">
             <div className="admin-shield-icon">
               <ShieldCheck size={20} />
@@ -770,6 +779,14 @@ export default function AdminModule() {
               <strong>Sushrutha</strong>
               <span>Hospital admin</span>
             </div>
+            <button
+              type="button"
+              className="admin-side-close"
+              aria-label="Close menu"
+              onClick={() => setSideNavOpen(false)}
+            >
+              <X size={18} />
+            </button>
           </div>
 
           <div className="admin-side-profile">
@@ -794,6 +811,7 @@ export default function AdminModule() {
                     className={`admin-side-link ${active ? 'active' : ''}`}
                     onClick={() => {
                       setActiveAdminTab(item.id);
+                      setSideNavOpen(false);
                       if (item.id === 'reviews') fetchReviewAnalytics();
                     }}
                   >
@@ -815,9 +833,20 @@ export default function AdminModule() {
 
         <section className="admin-main-pane">
           <header className="admin-console-top">
-            <div>
-              <h3>{activeNavLabel}</h3>
-              <p>Victoria Hospital · live operations</p>
+            <div className="admin-console-heading">
+              <button
+                type="button"
+                className="admin-menu-toggle"
+                aria-label="Open admin menu"
+                aria-expanded={sideNavOpen}
+                onClick={() => setSideNavOpen(true)}
+              >
+                <Menu size={20} />
+              </button>
+              <div>
+                <h3>{activeNavLabel}</h3>
+                <p>Victoria Hospital · live operations</p>
+              </div>
             </div>
             {alertMsg && (
               <div className={`status-alert admin-inline-alert ${alertType === 'error' ? 'alert-error' : 'alert-success'}`}>
@@ -1617,7 +1646,8 @@ export default function AdminModule() {
                   value={analyticsDeptFilter}
                   onChange={(e) => setAnalyticsDeptFilter(e.target.value)}
                   className="filter-select"
-                  style={{ minWidth: '180px', padding: '6px 10px', fontSize: '0.82rem' }}
+                  className="admin-filter-select-fluid"
+                  style={{ padding: '6px 10px', fontSize: '0.82rem' }}
                 >
                   <option value="ALL">All Departments</option>
                   {DEPARTMENTS.map((dept) => (
@@ -2281,7 +2311,7 @@ export default function AdminModule() {
                   fetchAuditLogs(e.target.value);
                 }}
                 className="filter-select"
-                style={{ minWidth: 180 }}
+                className="admin-filter-select-fluid"
               >
                 <option value="ALL">All event types</option>
                 {(auditData?.event_types || []).map((t) => (
@@ -2297,7 +2327,7 @@ export default function AdminModule() {
           {loadingAudit && !auditData ? (
             <p style={{ color: '#64748b' }}>Loading audit trail…</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(260px, 1fr)', gap: 14 }}>
+            <div className="admin-audit-grid">
               <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontSize: 13 }}>
                   Hospital events ({auditData?.total || 0})

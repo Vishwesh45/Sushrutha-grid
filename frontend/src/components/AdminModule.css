@@ -47,6 +47,36 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.admin-side-brand > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-side-close,
+.admin-menu-toggle,
+.admin-side-backdrop {
+  display: none;
+}
+
+.admin-console-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-audit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr);
+  gap: 14px;
+}
+
+.admin-filter-select-fluid {
+  min-width: 0;
+  width: 100%;
+  max-width: 220px;
+}
+
 .admin-side-brand strong {
   display: block;
   font-size: 1rem;
@@ -417,18 +447,118 @@
 }
 
 @media (max-width: 920px) {
+  .admin-workspace--console {
+    overflow: visible;
+  }
+
   .admin-console-body {
     grid-template-columns: 1fr;
+    position: relative;
+  }
+
+  .admin-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+    color: #0f172a;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .admin-side-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    border: none;
+    background: rgba(15, 23, 42, 0.4);
+    cursor: pointer;
   }
 
   .admin-side-nav {
-    position: static;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(280px, 86vw);
     max-height: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    z-index: 90;
+    transform: translateX(-105%);
+    transition: transform 0.2s ease;
+    box-shadow: 8px 0 28px rgba(15, 23, 42, 0.2);
+  }
+
+  .admin-side-nav.is-open {
+    transform: translateX(0);
+  }
+
+  .admin-side-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
   }
 
   .admin-side-logout {
     margin-top: 12px;
+  }
+
+  .admin-pane-scroll {
+    padding: 8px 12px 24px;
+  }
+
+  .admin-console-top {
+    padding: 12px 12px 6px;
+  }
+
+  .search-box-wrap {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .doctors-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-audit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-filter-select-fluid {
+    max-width: none;
+  }
+
+  .admin-kpi-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-decision-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-workspace--console table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-kpi-row {
+    grid-template-columns: 1fr;
   }
 }
 

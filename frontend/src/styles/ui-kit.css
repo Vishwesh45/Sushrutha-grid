@@ -240,3 +240,53 @@ textarea.filter-select:focus {
 .doctor-workspace {
   gap: 16px;
 }
+
+.rx-med-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rx-med-row {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 110px 100px 120px 100px minmax(130px, 1fr) 36px;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .rx-med-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .rx-med-row > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .rx-med-row > :nth-child(6) {
+    grid-column: 1 / -1;
+  }
+
+  .rx-med-row > :last-child {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .auth-modal-card {
+    padding: 18px 14px;
+    max-height: min(94vh, 760px);
+  }
+
+  .auth-role-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .auth-field-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
