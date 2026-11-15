@@ -991,6 +991,8 @@ body {
 .home-reveal:nth-of-type(4) { animation-delay: 0.15s; }
 .home-reveal:nth-of-type(5) { animation-delay: 0.2s; }
 .home-reveal:nth-of-type(6) { animation-delay: 0.25s; }
+.home-reveal:nth-of-type(7) { animation-delay: 0.3s; }
+.home-reveal:nth-of-type(8) { animation-delay: 0.35s; }
 
 @keyframes home-reveal-up {
   from {
@@ -1357,10 +1359,230 @@ body {
   color: #64748b;
 }
 
+/* —— How to use it (first-time guide) —— */
+.home-howto {
+  margin-top: 4px;
+}
+
+.howto-shell {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.howto-quickstart {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff7ed 0%, #fff 60%);
+  border: 1px solid #fed7aa;
+  margin-bottom: 16px;
+}
+
+.howto-quickstart strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #9a3412;
+  margin-bottom: 8px;
+}
+
+.howto-quickstart ol {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.howto-quickstart li {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.howto-module-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.howto-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.howto-chip:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--howto, #c4161c) 40%, #e2e8f0);
+}
+
+.howto-chip.active {
+  background: color-mix(in srgb, var(--howto, #c4161c) 12%, #fff);
+  border-color: var(--howto, #c4161c);
+  color: var(--howto, #c4161c);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--howto, #c4161c) 22%, transparent);
+}
+
+.howto-panel {
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--howto, #c4161c) 28%, #e2e8f0);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--howto, #c4161c) 7%, #fff), #fff 50%);
+  padding: 18px;
+  animation: facility-swap 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.howto-panel-head {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.howto-panel-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: var(--howto, #c4161c);
+  border: 1px solid color-mix(in srgb, var(--howto, #c4161c) 30%, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.howto-panel-intro {
+  flex: 1;
+  min-width: 200px;
+}
+
+.howto-panel-intro h3 {
+  margin: 0 0 8px;
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.howto-panel-intro p {
+  margin: 0 0 6px;
+  font-size: 0.86rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.howto-label {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--howto, #c4161c);
+  margin-right: 6px;
+}
+
+.howto-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--howto, #c4161c);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.howto-cta:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.05);
+  color: #fff;
+}
+
+.howto-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.howto-col h4 {
+  margin: 0 0 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.howto-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.howto-steps li {
+  font-size: 0.84rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.howto-tabs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.howto-tabs li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #f1f5f9;
+}
+
+.howto-tabs strong {
+  font-size: 0.82rem;
+  color: #0f172a;
+}
+
+.howto-tabs span {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
 @media (max-width: 900px) {
   .home-story-grid,
   .journey-track {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .howto-columns {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1369,12 +1591,26 @@ body {
   .journey-track {
     grid-template-columns: 1fr;
   }
+
+  .howto-shell {
+    padding: 14px;
+  }
+
+  .howto-panel-head {
+    flex-direction: column;
+  }
+
+  .howto-cta {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-hero-animate,
   .home-reveal,
-  .facility-detail {
+  .facility-detail,
+  .howto-panel {
     animation: none !important;
   }
 
@@ -1384,6 +1620,9 @@ body {
   .home-story-block:hover,
   .facility-chip:hover,
   .facility-chip.active,
+  .howto-chip:hover,
+  .howto-chip.active,
+  .howto-cta:hover,
   .journey-step:hover,
   .journey-step.active,
   .module-box-lift:hover,

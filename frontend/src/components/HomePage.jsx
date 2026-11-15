@@ -4,7 +4,7 @@ import {
   Stethoscope, FileText, ShieldAlert, Tv, Database, ArrowRight,
   Heart, CheckCircle2, Mic, MapPin, Ticket, ClipboardList,
   Users, Gift, KeyRound, Star, ChevronRight,
-  Activity, Building2, HandHeart
+  Activity, Building2, HandHeart, BookOpen
 } from 'lucide-react';
 import { useHospitalWebSocket } from '../services/useHospitalWebSocket';
 import { useAuth } from '../context/AuthContext';
@@ -76,12 +76,248 @@ const JOURNEY = [
   { n: '4', title: 'Leave with your Rx', text: 'The doctor finishes the visit; your prescription shows up for you to keep.' },
 ];
 
+/** First-time user guide — mirrors live tabs/workflows in each module */
+const HOW_TO_MODULES = [
+  {
+    id: 'patient',
+    title: 'Patient',
+    path: '/patient',
+    cta: 'Open patient care',
+    icon: Stethoscope,
+    color: '#c4161c',
+    who: 'Anyone seeking OPD care at a government hospital in the grid.',
+    start: 'Tap “I am a patient”, register or sign in, then use the bottom tabs: Home · Care · Find · Me.',
+    workflow: [
+      'Sign in (or register) so your token and prescriptions stay with you.',
+      'Care → Consult: type or speak symptoms. The app suggests department + GREEN/AMBER/RED urgency.',
+      'Find → Nearby / Live OPD: pick a hospital; Find → Desk code: check in at reception when you arrive.',
+      'Take / confirm your OPD token, then wait on Home — phone updates when the chamber calls you.',
+      'After the visit: open the digital prescription from Home or Me → Records; optionally leave a review.',
+    ],
+    tabs: [
+      {
+        name: 'Home',
+        detail: 'Live visit summary: active token, call alerts, and quick links to your latest Rx when ready.',
+      },
+      {
+        name: 'Care → Consult',
+        detail: 'Main intake: voice (Whisper) or typed complaint, triage colour, department routing, then token flow.',
+      },
+      {
+        name: 'Care → Ask',
+        detail: 'Simple assistant for common hospital questions during your visit.',
+      },
+      {
+        name: 'Care → Follow-ups',
+        detail: 'Reminders the doctor may leave (return date / advice). Badge shows when something is due.',
+      },
+      {
+        name: 'Find → Nearby',
+        detail: 'GPS / map of nearby government hospitals (live OSM + distance).',
+      },
+      {
+        name: 'Find → Live OPD',
+        detail: 'See which digital OPD sessions are active so you know where tokens are running.',
+      },
+      {
+        name: 'Find → Desk code',
+        detail: 'Enter the short reception code before digital OPD check-in (admin publishes this code).',
+      },
+      {
+        name: 'Me → Records',
+        detail: 'Past consultations and printable digital prescriptions.',
+      },
+      {
+        name: 'Me → Reviews',
+        detail: 'Rate facility, department, doctor, and waiting area after a visit.',
+      },
+    ],
+  },
+  {
+    id: 'doctor',
+    title: 'Doctor',
+    path: '/doctor',
+    cta: 'Open doctor desk',
+    icon: FileText,
+    color: '#059669',
+    who: 'OPD doctors signed in with a doctor account linked to the hospital roster.',
+    start: 'Open Doctor desk, sign in, confirm your department/chamber. Use Queue · Prescription · Completed.',
+    workflow: [
+      'Patients with tokens appear in your chamber queue (WAITING).',
+      'Call next in line only (no skipping ahead) — status becomes CALLED; lobby TV + patient phone update.',
+      'Start consultation → IN_CONSULTATION. Skip/rejoin is available when someone does not respond.',
+      'Write the digital prescription (medicines, advice, follow-up text) and complete the visit → COMPLETED.',
+      'Patient sees the Rx in their app; you can review completed tokens on the Completed tab.',
+    ],
+    tabs: [
+      {
+        name: 'Queue',
+        detail: 'Live board: WAITING → CALLED → IN_CONSULTATION → COMPLETED (plus SKIPPED). Call next, start consult, skip.',
+      },
+      {
+        name: 'Digital prescription',
+        detail: 'Opens for the patient in consultation: medicine rows, advice, follow-up notes; issues the Rx slip.',
+      },
+      {
+        name: 'Completed',
+        detail: 'Today’s finished tokens for that chamber — reopen context if you need to confirm what was written.',
+      },
+    ],
+  },
+  {
+    id: 'admin',
+    title: 'Hospital admin',
+    path: '/admin',
+    cta: 'Open admin center',
+    icon: ShieldAlert,
+    color: '#1d4ed8',
+    who: 'Hospital operations staff who manage roster, floor codes, partners, and day-end insights.',
+    start: 'Sign in as admin. Use the side menu (or mobile hamburger): Floor ops · Partners · Insights.',
+    workflow: [
+      'Reception: publish today’s desk check-in code so patients can verify at the counter.',
+      'Doctors: keep the OPD roster current (department, room, shift, AVAILABLE / BUSY / OFF).',
+      'OPD queue: watch token volumes and department load for the day.',
+      'NGO / Volunteers: post needs; Accept NGO applications from the inbox.',
+      'CSR funding: post equipment lists; Accept company interests → pledge → Mark fulfilled when items arrive.',
+      'Performance + Decisions today: read hospital vs doctor ratings and clear ops numbers — not vanity charts.',
+    ],
+    tabs: [
+      {
+        name: 'Reception',
+        detail: 'Desk code for patient check-in before digital OPD.',
+      },
+      {
+        name: 'Doctors',
+        detail: 'Full roster: add/edit doctors, rooms, shifts, employment type, live status.',
+      },
+      {
+        name: 'OPD queue',
+        detail: 'Token analytics — today / date / month filters by department.',
+      },
+      {
+        name: 'Beds',
+        detail: 'Ward bed occupancy snapshot (live counts, not a static preview).',
+      },
+      {
+        name: 'NGO / Volunteers',
+        detail: 'Subtabs: post hospital volunteer needs · Check NGO applications (Accept / Reject / Deploy).',
+      },
+      {
+        name: 'CSR funding',
+        detail: 'Subtabs: Requirements lists · Company Interests (Accept → CSR_PLEDGED, then Fulfill). Offline Record Pledge still available.',
+      },
+      {
+        name: 'Decisions today',
+        detail: 'Clear operational numbers for the shift (roster + OPD aggregates).',
+      },
+      {
+        name: 'Performance',
+        detail: 'Hospital | Doctors views from patient ratings, with alerts and CSV export for doctor rows.',
+      },
+      {
+        name: 'Audit log',
+        detail: 'Hospital events and sessions for accountability.',
+      },
+    ],
+  },
+  {
+    id: 'lobby',
+    title: 'Lobby TV',
+    path: '/lobby-display',
+    cta: 'Open lobby screen',
+    icon: Tv,
+    color: '#7c3aed',
+    who: 'Waiting-hall display (tablet/TV browser). No patient login required.',
+    start: 'Open Lobby waiting screen on a large display facing the OPD seating area.',
+    workflow: [
+      'Keep the page open — it listens to the same live hospital channel as phones and the doctor desk.',
+      'When a doctor Calls a token, the board shows “now calling” with room guidance and a chime.',
+      'Patients hear/see the cue and walk to the chamber; staff do not need to shout numbers.',
+    ],
+    tabs: [
+      {
+        name: 'Now calling',
+        detail: 'Large token number + department/room when status is CALLED.',
+      },
+      {
+        name: 'Sound cue',
+        detail: 'Chime on new call events so the hall notices without staring at the screen.',
+      },
+      {
+        name: 'Room guide',
+        detail: 'Chamber / room text so people know where to walk.',
+      },
+    ],
+  },
+  {
+    id: 'ngo',
+    title: 'NGO volunteers',
+    path: '/volunteer',
+    cta: 'Open NGO portal',
+    icon: Users,
+    color: '#be123c',
+    who: 'Registered NGO organizations offering volunteer teams (footer → NGO).',
+    start: 'Register/sign in as volunteer/NGO. Browse hospital openings and apply as an organization.',
+    workflow: [
+      'Admin posts a volunteer requisition (people needed, shift, days).',
+      'NGO portal lists openings by hospital — apply with team size, skills, and contact.',
+      'Admin Checks applications: Accept → Deploy when the team is on site.',
+      'Your application status updates live when admin acts.',
+    ],
+    tabs: [
+      {
+        name: 'Hospital openings',
+        detail: 'Live requisitions from admin (department, headcount, duration).',
+      },
+      {
+        name: 'Apply',
+        detail: 'Submit NGO application against a specific requisition.',
+      },
+      {
+        name: 'My applications',
+        detail: 'Track PENDING / ACCEPTED / REJECTED / DEPLOYED.',
+      },
+    ],
+  },
+  {
+    id: 'csr',
+    title: 'CSR companies',
+    path: '/csr',
+    cta: 'Open CSR portal',
+    icon: Gift,
+    color: '#c2410c',
+    who: 'Corporate / foundation CSR accounts (footer → CSR).',
+    start: 'Register/sign in as CSR. Company name is your account; liaison can sit in the contact field.',
+    workflow: [
+      'Admin posts a multi-item equipment requirement (POSTED).',
+      'CSR portal: Express interest (does not lock the list — several companies may apply).',
+      'Admin Company Interests: Accept one → requirement becomes CSR_PLEDGED; other pending interests are rejected.',
+      'When goods arrive, admin Marks Fulfilled. Watch My interests for ACCEPTED / REJECTED.',
+    ],
+    tabs: [
+      {
+        name: 'Hospital requirements',
+        detail: 'Posted funding lists with items, priority, and target cost.',
+      },
+      {
+        name: 'Express interest',
+        detail: 'Non-locking interest with indicative amount and notes.',
+      },
+      {
+        name: 'My interests',
+        detail: 'Your PENDING / ACCEPTED / REJECTED history synced with admin decisions.',
+      },
+    ],
+  },
+];
+
 export default function HomePage() {
   const { isConnected } = useHospitalWebSocket();
   const { user, isAuthenticated, loading } = useAuth();
   const role = isAuthenticated ? user?.role : null;
   const [openFacility, setOpenFacility] = useState('voice');
   const [activeJourney, setActiveJourney] = useState(0);
+  const [howToModule, setHowToModule] = useState('patient');
 
   // Signed-in staff/patients belong in their workspace — never the marketing landing page
   if (!loading && isAuthenticated && role) {
@@ -204,10 +440,16 @@ export default function HomePage() {
             </>
           )}
           {!role && (
-            <Link to="/knowledge-base" className="hero-btn-secondary">
-              <Database size={18} />
-              <span>Learn more</span>
-            </Link>
+            <>
+              <a href="#how-to-use" className="hero-btn-secondary">
+                <BookOpen size={18} />
+                <span>How to use it</span>
+              </a>
+              <Link to="/knowledge-base" className="hero-btn-secondary">
+                <Database size={18} />
+                <span>Learn more</span>
+              </Link>
+            </>
           )}
         </div>
 
@@ -339,6 +581,96 @@ export default function HomePage() {
               <p>{step.text}</p>
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* How to use it — first-time guide */}
+      <section className="home-howto home-reveal" id="how-to-use">
+        <div className="home-section-header">
+          <div className="section-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <BookOpen size={14} /> How to use it
+          </div>
+          <h2 className="section-heading">First time here? Read this before you sign in</h2>
+          <p className="section-subtext">
+            Pick a role below. Each panel explains who it is for, the real workflow, and every live tab —
+            so patients, doctors, admin, lobby TV, NGO, and CSR teams all know where to click.
+          </p>
+        </div>
+
+        <div className="howto-shell">
+          <div className="howto-quickstart">
+            <strong>Quick start</strong>
+            <ol>
+              <li>Choose your role on this page (or use the footer for NGO / CSR).</li>
+              <li>Register once, then sign in — you land in your workspace, not this marketing page.</li>
+              <li>On phones, open the menu (☰) for the same tabs as the desktop side bar.</li>
+              <li>Screens stay in sync: patient phone, doctor desk, lobby TV, and admin update together when a token moves.</li>
+            </ol>
+          </div>
+
+          <div className="howto-module-chips" role="tablist" aria-label="How to use by role">
+            {HOW_TO_MODULES.map((mod) => {
+              const Icon = mod.icon;
+              const active = howToModule === mod.id;
+              return (
+                <button
+                  key={mod.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={`howto-chip ${active ? 'active' : ''}`}
+                  style={{ '--howto': mod.color }}
+                  onClick={() => setHowToModule(mod.id)}
+                >
+                  <Icon size={15} />
+                  <span>{mod.title}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {HOW_TO_MODULES.filter((m) => m.id === howToModule).map((mod) => {
+            const Icon = mod.icon;
+            return (
+              <div key={mod.id} className="howto-panel" style={{ '--howto': mod.color }}>
+                <div className="howto-panel-head">
+                  <div className="howto-panel-icon">
+                    <Icon size={22} />
+                  </div>
+                  <div className="howto-panel-intro">
+                    <h3>{mod.title} module</h3>
+                    <p><span className="howto-label">Who</span> {mod.who}</p>
+                    <p><span className="howto-label">Start</span> {mod.start}</p>
+                  </div>
+                  <Link to={mod.path} className="howto-cta">
+                    {mod.cta} <ArrowRight size={14} />
+                  </Link>
+                </div>
+
+                <div className="howto-columns">
+                  <div className="howto-col">
+                    <h4>Workflow</h4>
+                    <ol className="howto-steps">
+                      {mod.workflow.map((step) => (
+                        <li key={step}>{step}</li>
+                      ))}
+                    </ol>
+                  </div>
+                  <div className="howto-col">
+                    <h4>Tabs & features</h4>
+                    <ul className="howto-tabs">
+                      {mod.tabs.map((tab) => (
+                        <li key={tab.name}>
+                          <strong>{tab.name}</strong>
+                          <span>{tab.detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
