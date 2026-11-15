@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ShellMenuProvider } from './context/ShellMenuContext';
 import NavigationNavbar from './components/NavigationNavbar';
 import RoleGate from './components/RoleGate';
 import HomePage from './components/HomePage';
@@ -86,7 +87,9 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppLayout />
+        <ShellMenuProvider>
+          <AppLayout />
+        </ShellMenuProvider>
       </BrowserRouter>
     </AuthProvider>
   );

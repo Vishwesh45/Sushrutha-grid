@@ -5,9 +5,10 @@ import {
   Calendar, Clock, Phone, Mail, Award, Briefcase, CheckCircle2, 
   AlertCircle, LogOut, BarChart3, Bed, Activity, Lock, X, Plus, 
   HeartHandshake, Gift, Check, FileText, PhoneCall, Play, CheckCheck, UserX,
-  ExternalLink, Menu
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useShellMenu } from '../context/ShellMenuContext';
 import { useHospitalWebSocket } from '../services/useHospitalWebSocket';
 import UnifiedAuthModal from './UnifiedAuthModal';
 import api from '../services/api';
@@ -22,6 +23,33 @@ const DEPARTMENTS = [
 ];
 
 const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const ADMIN_NAV = [
+  {
+    group: 'Floor ops',
+    items: [
+      { id: 'reception', label: 'Reception', hint: 'Desk code', icon: KeyRound },
+      { id: 'doctors', label: 'Doctors', hint: 'Roster', icon: Stethoscope },
+      { id: 'queues', label: 'OPD queue', hint: 'Tokens today', icon: BarChart3 },
+      { id: 'beds', label: 'Beds', hint: 'Ward occupancy', icon: Bed },
+    ],
+  },
+  {
+    group: 'Partners',
+    items: [
+      { id: 'volunteers', label: 'NGO / Volunteers', hint: 'Requisitions', icon: Users },
+      { id: 'csr', label: 'CSR funding', hint: 'Equipment lists', icon: Building },
+    ],
+  },
+  {
+    group: 'Insights',
+    items: [
+      { id: 'analytics', label: 'Hospital pulse', hint: 'Staffing & footfall', icon: Activity },
+      { id: 'reviews', label: 'Ratings', hint: 'Patient feedback', icon: Award },
+      { id: 'audit', label: 'Audit log', hint: 'Events & sessions', icon: ShieldAlert },
+    ],
+  },
+];
 
 const DEFAULT_DOCTOR_FORM = {
   name: '',
@@ -75,7 +103,7 @@ export default function AdminModule() {
 
   // Admin section sub-navigation: 'reception' | 'doctors' | 'volunteers' | 'csr' | 'queues' | 'beds' | 'analytics' | 'audit'
   const [activeAdminTab, setActiveAdminTab] = useState('reception');
-  const [sideNavOpen, setSideNavOpen] = useState(false);
+  const { registerPageMenu, clearPageMenu } = useShellMenu();
 
   // Reception desk code (Victoria check-in)
   const [receptionCode, setReceptionCode] = useState(null);
@@ -678,6 +706,32 @@ export default function AdminModule() {
     }
   };
 
+  // One site hamburger: publish admin sections into the global shell drawer
+  useEffect(() => {
+    if (!isAdmin) {
+      clearPageMenu();
+      return undefined;
+    }
+    registerPageMenu({
+      title: 'Admin console',
+      groups: ADMIN_NAV.map((group) => ({
+        label: group.group,
+        items: group.items.map((item) => ({
+          id: item.id,
+          label: item.label,
+          Icon: item.icon,
+          active: activeAdminTab === item.id,
+          onSelect: () => {
+            setActiveAdminTab(item.id);
+            if (item.id === 'reviews') fetchReviewAnalytics();
+          },
+        })),
+      })),
+    });
+    return () => clearPageMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, activeAdminTab, registerPageMenu, clearPageMenu]);
+
   // ====================================================
   // RENDER: LOGIN GATE IF NOT ADMIN
   // ====================================================
@@ -727,50 +781,15 @@ export default function AdminModule() {
     );
   }
 
-  const ADMIN_NAV = [
-    {
-      group: 'Floor ops',
-      items: [
-        { id: 'reception', label: 'Reception', hint: 'Desk code', icon: KeyRound },
-        { id: 'doctors', label: 'Doctors', hint: 'Roster', icon: Stethoscope },
-        { id: 'queues', label: 'OPD queue', hint: 'Tokens today', icon: BarChart3 },
-        { id: 'beds', label: 'Beds', hint: 'Ward occupancy', icon: Bed },
-      ],
-    },
-    {
-      group: 'Partners',
-      items: [
-        { id: 'volunteers', label: 'NGO / Volunteers', hint: 'Requisitions', icon: Users },
-        { id: 'csr', label: 'CSR funding', hint: 'Equipment lists', icon: Building },
-      ],
-    },
-    {
-      group: 'Insights',
-      items: [
-        { id: 'analytics', label: 'Hospital pulse', hint: 'Staffing & footfall', icon: Activity },
-        { id: 'reviews', label: 'Ratings', hint: 'Patient feedback', icon: Award },
-        { id: 'audit', label: 'Audit log', hint: 'Events & sessions', icon: ShieldAlert },
-      ],
-    },
-  ];
-
   const activeNavLabel = ADMIN_NAV.flatMap((g) => g.items).find((i) => i.id === activeAdminTab)?.label || 'Admin';
 
   // ====================================================
   // RENDER: FULL ADMIN WORKSPACE
   // ====================================================
   return (
-    <div className={`admin-workspace admin-workspace--console ${sideNavOpen ? 'admin-side-open' : ''}`}>
+    <div className="admin-workspace admin-workspace--console">
       <div className="admin-console-body">
-        {sideNavOpen && (
-          <button
-            type="button"
-            className="admin-side-backdrop"
-            aria-label="Close admin menu"
-            onClick={() => setSideNavOpen(false)}
-          />
-        )}
-        <aside className={`admin-side-nav ${sideNavOpen ? 'is-open' : ''}`} aria-label="Admin sections">
+        <aside className="admin-side-nav" aria-label="Admin sections">
           <div className="admin-side-brand">
             <div className="admin-shield-icon">
               <ShieldCheck size={20} />
@@ -779,14 +798,6 @@ export default function AdminModule() {
               <strong>Sushrutha</strong>
               <span>Hospital admin</span>
             </div>
-            <button
-              type="button"
-              className="admin-side-close"
-              aria-label="Close menu"
-              onClick={() => setSideNavOpen(false)}
-            >
-              <X size={18} />
-            </button>
           </div>
 
           <div className="admin-side-profile">
@@ -811,7 +822,6 @@ export default function AdminModule() {
                     className={`admin-side-link ${active ? 'active' : ''}`}
                     onClick={() => {
                       setActiveAdminTab(item.id);
-                      setSideNavOpen(false);
                       if (item.id === 'reviews') fetchReviewAnalytics();
                     }}
                   >
@@ -834,15 +844,6 @@ export default function AdminModule() {
         <section className="admin-main-pane">
           <header className="admin-console-top">
             <div className="admin-console-heading">
-              <button
-                type="button"
-                className="admin-menu-toggle"
-                aria-label="Open admin menu"
-                aria-expanded={sideNavOpen}
-                onClick={() => setSideNavOpen(true)}
-              >
-                <Menu size={20} />
-              </button>
               <div>
                 <h3>{activeNavLabel}</h3>
                 <p>Victoria Hospital · live operations</p>

@@ -449,70 +449,22 @@
 @media (max-width: 920px) {
   .admin-workspace--console {
     overflow: visible;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
   }
 
   .admin-console-body {
     grid-template-columns: 1fr;
-    position: relative;
+    min-height: auto;
   }
 
-  .admin-menu-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    color: #0f172a;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .admin-side-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 80;
-    border: none;
-    background: rgba(15, 23, 42, 0.4);
-    cursor: pointer;
-  }
-
-  .admin-side-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(280px, 86vw);
-    max-height: none;
-    z-index: 90;
-    transform: translateX(-105%);
-    transition: transform 0.2s ease;
-    box-shadow: 8px 0 28px rgba(15, 23, 42, 0.2);
-  }
-
-  .admin-side-nav.is-open {
-    transform: translateX(0);
-  }
-
+  /* Desktop side nav stays on desktop; mobile uses the global shell drawer */
+  .admin-side-nav,
+  .admin-menu-toggle,
+  .admin-side-backdrop,
   .admin-side-close {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: auto;
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    border-radius: 8px;
-    background: transparent;
-    color: #fff;
-    cursor: pointer;
-  }
-
-  .admin-side-logout {
-    margin-top: 12px;
+    display: none !important;
   }
 
   .admin-pane-scroll {
@@ -520,7 +472,11 @@
   }
 
   .admin-console-top {
-    padding: 12px 12px 6px;
+    padding: 10px 12px 4px;
+  }
+
+  .admin-console-top h3 {
+    font-size: 1.15rem;
   }
 
   .search-box-wrap {
