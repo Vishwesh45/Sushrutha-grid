@@ -155,7 +155,9 @@ export default function AdminModule() {
   // ==========================================
   // 3. CSR REQUIREMENTS STATE
   // ==========================================
+  const [csrSubTab, setCsrSubTab] = useState('requirements'); // 'requirements' | 'interests'
   const [csrRequirements, setCsrRequirements] = useState([]);
+  const [csrInterests, setCsrInterests] = useState([]);
   const [loadingCsr, setLoadingCsr] = useState(false);
   const [csrModalOpen, setCsrModalOpen] = useState(false);
   const [csrForm, setCsrForm] = useState({
@@ -252,14 +254,18 @@ export default function AdminModule() {
     }
   };
 
-  // Load CSR
+  // Load CSR requirements + company interest inbox
   const fetchCsrData = async () => {
     setLoadingCsr(true);
     try {
-      const res = await api.get('/admin/csr/requirements');
-      setCsrRequirements(res.data.data || []);
+      const [reqsRes, interestsRes] = await Promise.all([
+        api.get('/admin/csr/requirements'),
+        api.get('/admin/csr/interests'),
+      ]);
+      setCsrRequirements(reqsRes.data.data || []);
+      setCsrInterests(interestsRes.data.data || []);
     } catch (err) {
-      console.error('Failed to load CSR requirements:', err);
+      console.error('Failed to load CSR data:', err);
     } finally {
       setLoadingCsr(false);
     }
@@ -382,7 +388,12 @@ export default function AdminModule() {
       ev === 'VOLUNTEER_REQUISITION_POSTED' ||
       ev === 'VOLUNTEER_APPLICATION_SUBMITTED' ||
       ev === 'CSR_REQUIREMENT_POSTED' ||
-      ev === 'CSR_PLEDGE_RECORDED'
+      ev === 'CSR_INTEREST_CREATED' ||
+      ev === 'CSR_INTEREST_ACCEPTED' ||
+      ev === 'CSR_INTEREST_REJECTED' ||
+      ev === 'CSR_PLEDGED' ||
+      ev === 'CSR_PLEDGE_RECORDED' ||
+      ev === 'CSR_FULFILLED'
     ) {
       if (activeAdminTab === 'doctors') {
         fetchDoctorsAndSummary();
@@ -1393,164 +1404,304 @@ export default function AdminModule() {
       {/* ========================================================== */}
       {activeAdminTab === 'csr' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div className="card" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1e293b' }}>
-                Hospital Requirements for Corporate CSR Sponsorship
-              </h3>
-              <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
-                Multi-item equipment demands with dynamic lifecycle: <code>POSTED</code> &rarr; <code>CSR_PLEDGED</code> &rarr; <code>FULFILLED</code>.
-              </p>
-            </div>
+          <div className="volunteer-tabs-strip">
             <button
               type="button"
-              onClick={() => setCsrModalOpen(true)}
-              className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              className={`vol-subtab-btn ${csrSubTab === 'requirements' ? 'active' : ''}`}
+              onClick={() => setCsrSubTab('requirements')}
             >
-              <Plus size={16} /> Post New Requirement List
+              <Building size={15} />
+              <span>Requirements (Hospital Needs)</span>
+            </button>
+            <button
+              type="button"
+              className={`vol-subtab-btn ${csrSubTab === 'interests' ? 'active' : ''}`}
+              onClick={() => setCsrSubTab('interests')}
+            >
+              <Gift size={15} />
+              <span>Company Interests</span>
+              <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.68rem', padding: '1px 6px', borderRadius: '10px' }}>
+                {csrInterests.filter((i) => i.status === 'PENDING').length}
+              </span>
             </button>
           </div>
 
-          {loadingCsr ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-              <RefreshCw size={24} className="spinner-icon" style={{ margin: '0 auto 10px' }} />
-              <p>Loading hospital CSR requirements...</p>
-            </div>
-          ) : csrRequirements.length === 0 ? (
-            <div className="card" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-              <Building size={36} style={{ margin: '0 auto 10px', color: '#94a3b8' }} />
-              <h4>No hospital requirements posted yet</h4>
-              <p>Click "Post New Requirement List" above to create a multi-item equipment requirement for corporate sponsorship.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {csrRequirements.map((req) => {
-                const isPosted = req.status === 'POSTED';
-                const isPledged = req.status === 'CSR_PLEDGED';
-                const isFulfilled = req.status === 'FULFILLED';
+          {csrSubTab === 'requirements' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              <div className="card" style={{ padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1e293b' }}>
+                    Hospital Requirements for Corporate CSR Sponsorship
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+                    Lifecycle: <code>POSTED</code> → company interest → Accept → <code>CSR_PLEDGED</code> → <code>FULFILLED</code>.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCsrModalOpen(true)}
+                  className="btn btn-primary"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Plus size={16} /> Post New Requirement List
+                </button>
+              </div>
 
-                return (
-                  <div key={req.requirement_id} className="csr-card">
-                    <div className="csr-card-top">
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1e3a8a', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
-                            {req.requirement_id}
-                          </span>
-                          <span className={`csr-priority-badge ${req.priority}`}>
-                            {req.priority} PRIORITY
-                          </span>
-                          <span style={{ fontSize: '0.76rem', color: '#047857', fontWeight: 700 }}>
-                            {req.department}
-                          </span>
-                        </div>
-                        <h4 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>
-                          {req.title}
-                        </h4>
-                      </div>
+              {loadingCsr ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <RefreshCw size={24} className="spinner-icon" style={{ margin: '0 auto 10px' }} />
+                  <p>Loading hospital CSR requirements...</p>
+                </div>
+              ) : csrRequirements.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <Building size={36} style={{ margin: '0 auto 10px', color: '#94a3b8' }} />
+                  <h4>No hospital requirements posted yet</h4>
+                  <p>Click "Post New Requirement List" above to create a multi-item equipment requirement for corporate sponsorship.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {csrRequirements.map((req) => {
+                    const isPosted = req.status === 'POSTED';
+                    const isPledged = req.status === 'CSR_PLEDGED';
+                    const isFulfilled = req.status === 'FULFILLED';
+                    const pendingCount = req.pending_interests_count ?? 0;
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span className={`csr-status-pill ${req.status}`}>
-                          {req.status === 'POSTED' && 'POSTED (Awaiting CSR)'}
-                          {req.status === 'CSR_PLEDGED' && 'CSR PLEDGED'}
-                          {req.status === 'FULFILLED' && '✓ FULFILLED'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCsrRequirement(req.requirement_id)}
-                          className="btn-icon-action delete"
-                          title="Delete requirement list"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.45' }}>
-                      {req.description}
-                    </p>
-
-                    {/* Multi-Item Equipment Table */}
-                    <table className="csr-items-table">
-                      <thead>
-                        <tr>
-                          <th>Item / Equipment Description</th>
-                          <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
-                          <th style={{ width: '140px', textAlign: 'right' }}>Estimated Cost / Unit</th>
-                          <th style={{ width: '140px', textAlign: 'right' }}>Total Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {req.items && req.items.map((it, idx) => (
-                          <tr key={idx}>
-                            <td><strong>{it.item_name}</strong></td>
-                            <td style={{ textAlign: 'center' }}>{it.quantity}</td>
-                            <td style={{ textAlign: 'right' }}>₹{it.estimated_cost?.toLocaleString()}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                              ₹{(it.quantity * it.estimated_cost)?.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <div className="csr-total-cost-strip">
-                      <span>Total Requisition Funding Target:</span>
-                      <strong>₹{req.total_estimated_cost?.toLocaleString()}</strong>
-                    </div>
-
-                    {/* CSR Sponsor Banner (if pledged or fulfilled) */}
-                    {req.csr_sponsor && (
-                      <div className="csr-sponsor-banner">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Gift size={18} style={{ color: '#86198f' }} />
+                    return (
+                      <div key={req.requirement_id} className="csr-card">
+                        <div className="csr-card-top">
                           <div>
-                            <span style={{ fontSize: '0.74rem', color: '#86198f', fontWeight: 800 }}>COMMITTED CSR SPONSOR:</span>
-                            <strong style={{ display: 'block', fontSize: '0.92rem', color: '#581c87' }}>
-                              {req.csr_sponsor.company_name}
-                            </strong>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.72rem', background: '#eff6ff', color: '#1e3a8a', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                                {req.requirement_id}
+                              </span>
+                              <span className={`csr-priority-badge ${req.priority}`}>
+                                {req.priority} PRIORITY
+                              </span>
+                              <span style={{ fontSize: '0.76rem', color: '#047857', fontWeight: 700 }}>
+                                {req.department}
+                              </span>
+                              {isPosted && pendingCount > 0 && (
+                                <span style={{ fontSize: '0.72rem', background: '#ffedd5', color: '#c2410c', padding: '2px 8px', borderRadius: '4px', fontWeight: 800 }}>
+                                  {pendingCount} pending interest{pendingCount === 1 ? '' : 's'}
+                                </span>
+                              )}
+                            </div>
+                            <h4 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>
+                              {req.title}
+                            </h4>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span className={`csr-status-pill ${req.status}`}>
+                              {req.status === 'POSTED' && 'POSTED (Awaiting CSR)'}
+                              {req.status === 'CSR_PLEDGED' && 'CSR PLEDGED'}
+                              {req.status === 'FULFILLED' && '✓ FULFILLED'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCsrRequirement(req.requirement_id)}
+                              className="btn-icon-action delete"
+                              title="Delete requirement list"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#581c87' }}>
-                          <span>Pledged Amount: <strong>₹{req.csr_sponsor.pledged_amount?.toLocaleString()}</strong></span>
+
+                        <p style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.45' }}>
+                          {req.description}
+                        </p>
+
+                        <table className="csr-items-table">
+                          <thead>
+                            <tr>
+                              <th>Item / Equipment Description</th>
+                              <th style={{ width: '80px', textAlign: 'center' }}>Qty</th>
+                              <th style={{ width: '140px', textAlign: 'right' }}>Estimated Cost / Unit</th>
+                              <th style={{ width: '140px', textAlign: 'right' }}>Total Cost</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {req.items && req.items.map((it, idx) => (
+                              <tr key={idx}>
+                                <td><strong>{it.item_name}</strong></td>
+                                <td style={{ textAlign: 'center' }}>{it.quantity}</td>
+                                <td style={{ textAlign: 'right' }}>₹{it.estimated_cost?.toLocaleString()}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                  ₹{(it.quantity * it.estimated_cost)?.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+
+                        <div className="csr-total-cost-strip">
+                          <span>Total Requisition Funding Target:</span>
+                          <strong>₹{req.total_estimated_cost?.toLocaleString()}</strong>
+                        </div>
+
+                        {req.csr_sponsor && (
+                          <div className="csr-sponsor-banner">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Gift size={18} style={{ color: '#86198f' }} />
+                              <div>
+                                <span style={{ fontSize: '0.74rem', color: '#86198f', fontWeight: 800 }}>COMMITTED CSR SPONSOR:</span>
+                                <strong style={{ display: 'block', fontSize: '0.92rem', color: '#581c87' }}>
+                                  {req.csr_sponsor.company_name}
+                                </strong>
+                              </div>
+                            </div>
+                            <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#581c87' }}>
+                              <span>Pledged Amount: <strong>₹{req.csr_sponsor.pledged_amount?.toLocaleString()}</strong></span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '12px', flexWrap: 'wrap' }}>
+                          {isPosted && pendingCount > 0 && (
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              style={{ fontSize: '0.84rem', padding: '8px 14px' }}
+                              onClick={() => setCsrSubTab('interests')}
+                            >
+                              Review {pendingCount} interest{pendingCount === 1 ? '' : 's'}
+                            </button>
+                          )}
+                          {isPosted && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPledgeModal(req)}
+                              className="btn btn-primary"
+                              style={{ fontSize: '0.84rem', padding: '8px 14px', background: '#7c3aed', borderColor: '#7c3aed' }}
+                            >
+                              <Gift size={14} style={{ marginRight: '6px' }} /> Offline Record Pledge
+                            </button>
+                          )}
+
+                          {isPledged && (
+                            <button
+                              type="button"
+                              onClick={() => handleFulfillRequirement(req.requirement_id)}
+                              className="btn btn-primary"
+                              style={{ fontSize: '0.84rem', padding: '8px 14px', background: '#059669', borderColor: '#059669' }}
+                            >
+                              <Check size={15} style={{ marginRight: '6px' }} /> Mark Items Received (Fulfilled)
+                            </button>
+                          )}
+
+                          {isFulfilled && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857', fontWeight: 800, fontSize: '0.85rem' }}>
+                              <CheckCircle2 size={16} /> Verified & Received at Hospital Wards
+                            </span>
+                          )}
                         </div>
                       </div>
-                    )}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
-                    {/* Dynamic Lifecycle Actions */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-                      {isPosted && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPledgeModal(req)}
-                          className="btn btn-primary"
-                          style={{ fontSize: '0.84rem', padding: '8px 14px', background: '#7c3aed', borderColor: '#7c3aed' }}
-                        >
-                          <Gift size={14} style={{ marginRight: '6px' }} /> Record CSR Interest / Pledge
-                        </button>
-                      )}
+          {csrSubTab === 'interests' && (
+            <div className="card" style={{ padding: '30px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <Gift size={22} style={{ color: '#1e3a8a' }} />
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 800 }}>Incoming CSR Company Interests</h3>
+              </div>
+              <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '16px' }}>
+                Companies express interest from the CSR portal. Accept one to lock the requirement as <code>CSR_PLEDGED</code>; other pending interests on that list are rejected automatically.
+              </p>
 
-                      {isPledged && (
-                        <button
-                          type="button"
-                          onClick={() => handleFulfillRequirement(req.requirement_id)}
-                          className="btn btn-primary"
-                          style={{ fontSize: '0.84rem', padding: '8px 14px', background: '#059669', borderColor: '#059669' }}
-                        >
-                          <Check size={15} style={{ marginRight: '6px' }} /> Mark Items Received (Fulfilled)
-                        </button>
-                      )}
-
-                      {isFulfilled && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857', fontWeight: 800, fontSize: '0.85rem' }}>
-                          <CheckCircle2 size={16} /> Verified & Received at Hospital Wards
+              {loadingCsr ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <RefreshCw size={24} className="spinner-icon" style={{ margin: '0 auto 10px' }} />
+                  <p>Loading interests...</p>
+                </div>
+              ) : csrInterests.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '50px 20px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
+                  <Gift size={40} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
+                  <h4 style={{ color: '#334155', fontWeight: 800 }}>No company interests yet</h4>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', maxWidth: '520px', margin: '6px auto 0' }}>
+                    When a CSR company signs in and clicks Express interest on a posted list, it appears here for Accept / Reject.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {csrInterests.map((interest) => (
+                    <div key={interest.interest_id} className="requisition-card">
+                      <div className="requisition-header">
+                        <div>
+                          <h4>{interest.company_name}</h4>
+                          <span style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                            {interest.interest_id} · {interest.requirement_title || interest.requirement_id}
+                            {interest.contact_person ? ` · Liaison: ${interest.contact_person}` : ''}
+                            {interest.email ? ` · ${interest.email}` : ''}
+                            {interest.pledged_amount != null ? ` · Indicative ₹${Number(interest.pledged_amount).toLocaleString('en-IN')}` : ''}
+                          </span>
+                          {interest.notes && (
+                            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 4 }}>
+                              Notes: {interest.notes}
+                            </div>
+                          )}
+                          {interest.requirement_status && (
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 4 }}>
+                              Requirement status: <strong>{interest.requirement_status}</strong>
+                            </div>
+                          )}
+                        </div>
+                        <span style={{
+                          background: interest.status === 'PENDING' ? '#fef3c7' : interest.status === 'ACCEPTED' ? '#dcfce7' : '#fee2e2',
+                          color: interest.status === 'PENDING' ? '#b45309' : interest.status === 'ACCEPTED' ? '#15803d' : '#b91c1c',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                        }}>
+                          {interest.status}
                         </span>
+                      </div>
+                      {interest.status === 'PENDING' && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            style={{ fontSize: '0.78rem', background: '#059669', borderColor: '#059669' }}
+                            onClick={async () => {
+                              try {
+                                await api.post(`/admin/csr/interests/${interest.interest_id}/accept`);
+                                showAlert(`Accepted ${interest.company_name} — requirement now CSR_PLEDGED`);
+                                fetchCsrData();
+                              } catch (err) {
+                                showAlert(err.response?.data?.detail || 'Accept failed', 'error');
+                              }
+                            }}
+                          >
+                            Accept → Pledge
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{ fontSize: '0.78rem' }}
+                            onClick={async () => {
+                              try {
+                                await api.post(`/admin/csr/interests/${interest.interest_id}/reject`);
+                                showAlert(`Rejected ${interest.interest_id}`);
+                                fetchCsrData();
+                              } catch (err) {
+                                showAlert(err.response?.data?.detail || 'Reject failed', 'error');
+                              }
+                            }}
+                          >
+                            Reject
+                          </button>
+                        </div>
                       )}
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

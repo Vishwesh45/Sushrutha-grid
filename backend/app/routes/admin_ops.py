@@ -11,7 +11,7 @@ from app.models.admin_ops import (
     ApplicationStatusUpdate,
     CSRRequirementCreate,
     CSRRequirementResponse,
-    CSRPledgeRequest
+    CSRPledgeRequest,
 )
 
 router = APIRouter(prefix="/api/admin", tags=["Hospital Administration Operations: Volunteer & CSR"])
@@ -252,6 +252,17 @@ def get_csr_requirements(current_user: dict = Depends(require_roles(["admin"])))
         db = get_database()
         cursor = db.csr_requirements.find({}, {"_id": 0}).sort("created_at", -1)
         reqs = list(cursor)
+        for req in reqs:
+            rid = req.get("requirement_id")
+            pending = db.csr_interests.count_documents({
+                "requirement_id": rid,
+                "status": "PENDING",
+            })
+            total_i = db.csr_interests.count_documents({"requirement_id": rid})
+            req["pending_interests_count"] = pending
+            req["interests_count"] = req.get("interests_count")
+            if req["interests_count"] is None:
+                req["interests_count"] = total_i
         return {
             "success": True,
             "total_count": len(reqs),
@@ -295,6 +306,7 @@ def create_csr_requirement(
             "total_estimated_cost": total_cost,
             "status": "POSTED",
             "csr_sponsor": None,
+            "interests_count": 0,
             "created_at": now,
             "updated_at": now,
             "posted_by": current_user.get("name"),
@@ -400,6 +412,12 @@ def record_csr_pledge(
             "notes": pledge.notes.strip() if pledge.notes else None
         }
 
+        hid = existing.get("hospital_id") or OPERATIONAL_HID
+        # Offline admin lock: reject any still-pending interests for this requirement.
+        db.csr_interests.update_many(
+            {"requirement_id": req_id_clean, "status": "PENDING"},
+            {"$set": {"status": "REJECTED", "updated_at": now, "reviewed_by": current_user.get("name")}},
+        )
         db.csr_requirements.update_one(
             {"requirement_id": req_id_clean},
             {
@@ -411,11 +429,18 @@ def record_csr_pledge(
             }
         )
         _log_event(db, "CSR_PLEDGED", {
-            "hospital_id": existing.get("hospital_id") or OPERATIONAL_HID,
+            "hospital_id": hid,
             "requirement_id": req_id_clean,
             "title": existing.get("title"),
             "status": "CSR_PLEDGED",
             "posted_by": current_user.get("name"),
+        })
+        broadcast_event("CSR_PLEDGED", {
+            "hospital_id": hid,
+            "requirement_id": req_id_clean,
+            "company_name": sponsor_data["company_name"],
+            "pledged_amount": sponsor_data["pledged_amount"],
+            "status": "CSR_PLEDGED",
         })
 
         updated_doc = db.csr_requirements.find_one({"requirement_id": req_id_clean}, {"_id": 0})
@@ -430,6 +455,192 @@ def record_csr_pledge(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to record CSR pledge: {str(e)}"
+        )
+
+
+@router.get("/csr/interests")
+def get_csr_interests(current_user: dict = Depends(require_roles(["admin"]))):
+    """Company interest inbox for posted CSR requirements."""
+    try:
+        db = get_database()
+        rows = list(db.csr_interests.find({}, {"_id": 0}).sort("created_at", -1))
+        req_ids = list({r.get("requirement_id") for r in rows if r.get("requirement_id")})
+        titles = {}
+        statuses = {}
+        if req_ids:
+            for doc in db.csr_requirements.find(
+                {"requirement_id": {"$in": req_ids}},
+                {"_id": 0, "requirement_id": 1, "title": 1, "status": 1},
+            ):
+                titles[doc["requirement_id"]] = doc.get("title")
+                statuses[doc["requirement_id"]] = doc.get("status")
+        for r in rows:
+            rid = r.get("requirement_id")
+            r["requirement_title"] = titles.get(rid)
+            r["requirement_status"] = statuses.get(rid)
+        return {"success": True, "total_count": len(rows), "data": rows}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch CSR interests: {str(e)}"
+        )
+
+
+@router.post("/csr/interests/{interest_id}/accept")
+def accept_csr_interest(
+    interest_id: str,
+    current_user: dict = Depends(require_roles(["admin"])),
+):
+    """
+    Accept one pending interest → lock requirement to CSR_PLEDGED with that sponsor.
+    Sibling PENDING interests on the same requirement are rejected.
+    """
+    try:
+        db = get_database()
+        interest_id_clean = interest_id.strip()
+        interest = db.csr_interests.find_one({"interest_id": interest_id_clean})
+        if not interest:
+            raise HTTPException(status_code=404, detail=f"CSR interest '{interest_id}' not found.")
+        if str(interest.get("status") or "").upper() != "PENDING":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Interest is already {interest.get('status')}. Only PENDING can be accepted.",
+            )
+
+        req_id = interest.get("requirement_id")
+        existing = db.csr_requirements.find_one({"requirement_id": req_id})
+        if not existing:
+            raise HTTPException(status_code=404, detail=f"Requirement '{req_id}' not found.")
+        if str(existing.get("status") or "").upper() not in ("POSTED", "OPEN"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Requirement is already {existing.get('status')}. Cannot accept another sponsor.",
+            )
+
+        now = datetime.utcnow().isoformat() + "Z"
+        hid = existing.get("hospital_id") or interest.get("hospital_id") or OPERATIONAL_HID
+        company = (interest.get("company_name") or "").strip() or "CSR Sponsor"
+        sponsor_data = {
+            "company_name": company,
+            "contact_person": interest.get("contact_person"),
+            "email": interest.get("email"),
+            "pledged_amount": interest.get("pledged_amount") or existing.get("total_estimated_cost", 0),
+            "pledged_at": now,
+            "notes": interest.get("notes"),
+            "csr_user_id": interest.get("csr_user_id"),
+            "interest_id": interest_id_clean,
+        }
+
+        db.csr_interests.update_one(
+            {"interest_id": interest_id_clean},
+            {"$set": {"status": "ACCEPTED", "updated_at": now, "reviewed_by": current_user.get("name")}},
+        )
+        db.csr_interests.update_many(
+            {
+                "requirement_id": req_id,
+                "interest_id": {"$ne": interest_id_clean},
+                "status": "PENDING",
+            },
+            {"$set": {"status": "REJECTED", "updated_at": now, "reviewed_by": current_user.get("name")}},
+        )
+        db.csr_requirements.update_one(
+            {"requirement_id": req_id},
+            {"$set": {"status": "CSR_PLEDGED", "csr_sponsor": sponsor_data, "updated_at": now, "hospital_id": hid}},
+        )
+
+        _log_event(db, "CSR_INTEREST_ACCEPTED", {
+            "hospital_id": hid,
+            "interest_id": interest_id_clean,
+            "requirement_id": req_id,
+            "company_name": company,
+            "posted_by": current_user.get("name"),
+        })
+        _log_event(db, "CSR_PLEDGED", {
+            "hospital_id": hid,
+            "requirement_id": req_id,
+            "title": existing.get("title"),
+            "status": "CSR_PLEDGED",
+            "posted_by": current_user.get("name"),
+        })
+        broadcast_event("CSR_INTEREST_ACCEPTED", {
+            "hospital_id": hid,
+            "interest_id": interest_id_clean,
+            "requirement_id": req_id,
+            "company_name": company,
+            "status": "ACCEPTED",
+        })
+        broadcast_event("CSR_PLEDGED", {
+            "hospital_id": hid,
+            "requirement_id": req_id,
+            "company_name": company,
+            "pledged_amount": sponsor_data["pledged_amount"],
+            "status": "CSR_PLEDGED",
+        })
+
+        updated_req = db.csr_requirements.find_one({"requirement_id": req_id}, {"_id": 0})
+        updated_interest = db.csr_interests.find_one({"interest_id": interest_id_clean}, {"_id": 0})
+        return {
+            "success": True,
+            "message": f"Accepted {company} for {req_id}. Requirement is now CSR_PLEDGED.",
+            "data": {"interest": updated_interest, "requirement": updated_req},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to accept CSR interest: {str(e)}"
+        )
+
+
+@router.post("/csr/interests/{interest_id}/reject")
+def reject_csr_interest(
+    interest_id: str,
+    current_user: dict = Depends(require_roles(["admin"])),
+):
+    """Reject a pending CSR company interest (requirement stays POSTED)."""
+    try:
+        db = get_database()
+        interest_id_clean = interest_id.strip()
+        interest = db.csr_interests.find_one({"interest_id": interest_id_clean})
+        if not interest:
+            raise HTTPException(status_code=404, detail=f"CSR interest '{interest_id}' not found.")
+        if str(interest.get("status") or "").upper() != "PENDING":
+            raise HTTPException(
+                status_code=400,
+                detail=f"Interest is already {interest.get('status')}. Only PENDING can be rejected.",
+            )
+
+        now = datetime.utcnow().isoformat() + "Z"
+        hid = interest.get("hospital_id") or OPERATIONAL_HID
+        db.csr_interests.update_one(
+            {"interest_id": interest_id_clean},
+            {"$set": {"status": "REJECTED", "updated_at": now, "reviewed_by": current_user.get("name")}},
+        )
+        _log_event(db, "CSR_INTEREST_REJECTED", {
+            "hospital_id": hid,
+            "interest_id": interest_id_clean,
+            "requirement_id": interest.get("requirement_id"),
+            "posted_by": current_user.get("name"),
+        })
+        broadcast_event("CSR_INTEREST_REJECTED", {
+            "hospital_id": hid,
+            "interest_id": interest_id_clean,
+            "requirement_id": interest.get("requirement_id"),
+            "status": "REJECTED",
+        })
+        updated = db.csr_interests.find_one({"interest_id": interest_id_clean}, {"_id": 0})
+        return {
+            "success": True,
+            "message": f"Interest '{interest_id_clean}' rejected.",
+            "data": updated,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to reject CSR interest: {str(e)}"
         )
 
 
@@ -460,6 +671,7 @@ def fulfill_csr_requirement(
             )
 
         now = datetime.utcnow().isoformat() + "Z"
+        hid = existing.get("hospital_id") or OPERATIONAL_HID
         db.csr_requirements.update_one(
             {"requirement_id": req_id_clean},
             {
@@ -472,11 +684,17 @@ def fulfill_csr_requirement(
             }
         )
         _log_event(db, "CSR_FULFILLED", {
-            "hospital_id": existing.get("hospital_id") or OPERATIONAL_HID,
+            "hospital_id": hid,
             "requirement_id": req_id_clean,
             "title": existing.get("title"),
             "status": "FULFILLED",
             "posted_by": current_user.get("name"),
+        })
+        broadcast_event("CSR_FULFILLED", {
+            "hospital_id": hid,
+            "requirement_id": req_id_clean,
+            "title": existing.get("title"),
+            "status": "FULFILLED",
         })
 
         updated_doc = db.csr_requirements.find_one({"requirement_id": req_id_clean}, {"_id": 0})

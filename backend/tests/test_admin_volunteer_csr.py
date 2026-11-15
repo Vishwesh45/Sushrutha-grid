@@ -107,3 +107,112 @@ def test_csr_multi_item_requirements_lifecycle():
 
     del_res = client.delete(f"/api/admin/csr/requirements/{req_id}", headers=headers)
     assert del_res.status_code == 200
+
+
+def test_csr_interest_accept_reject_pipeline():
+    """
+    CSR portal Express interest → admin Accept locks CSR_PLEDGED;
+    sibling PENDING interests are rejected; then FULFILLED.
+    """
+    import uuid
+
+    headers = _admin_headers()
+    uid = uuid.uuid4().hex[:8]
+    csr_email = f"csr_pipeline_{uid}@example.com"
+    csr_pw = "CsrTest123!"
+
+    reg = client.post("/api/auth/register", json={
+        "name": f"Test Foundation {uid}",
+        "email": csr_email,
+        "password": csr_pw,
+        "role": "csr",
+        "department": "CSR Desk",
+    })
+    assert reg.status_code in (200, 201), reg.text
+    csr_login = client.post("/api/auth/login", json={"email": csr_email, "password": csr_pw})
+    assert csr_login.status_code == 200, csr_login.text
+    csr_headers = {"Authorization": f"Bearer {csr_login.json()['access_token']}"}
+
+    # Second company for sibling reject
+    csr2_email = f"csr_pipeline_b_{uid}@example.com"
+    reg2 = client.post("/api/auth/register", json={
+        "name": f"Alt Foundation {uid}",
+        "email": csr2_email,
+        "password": csr_pw,
+        "role": "csr",
+    })
+    assert reg2.status_code in (200, 201), reg2.text
+    csr2_login = client.post("/api/auth/login", json={"email": csr2_email, "password": csr_pw})
+    assert csr2_login.status_code == 200
+    csr2_headers = {"Authorization": f"Bearer {csr2_login.json()['access_token']}"}
+
+    create_res = client.post("/api/admin/csr/requirements", json={
+        "title": f"CSR Interest Pipeline Kit {uid}",
+        "department": "General Medicine",
+        "description": "Pipeline test equipment list for interest accept/reject sync.",
+        "priority": "HIGH",
+        "items": [{"item_name": "Pulse Oximeter Pack", "quantity": 5, "estimated_cost": 4000.0}],
+    }, headers=headers)
+    assert create_res.status_code == 201, create_res.text
+    req_id = create_res.json()["data"]["requirement_id"]
+
+    interest1 = client.post(
+        f"/api/partners/csr/listings/{req_id}/interest",
+        json={"pledged_amount": 20000.0, "notes": "Primary interest"},
+        headers=csr_headers,
+    )
+    assert interest1.status_code == 201, interest1.text
+    i1 = interest1.json()["data"]
+    assert i1["status"] == "PENDING"
+    interest_id = i1["interest_id"]
+
+    # Duplicate pending blocked
+    dup = client.post(
+        f"/api/partners/csr/listings/{req_id}/interest",
+        json={"notes": "dup"},
+        headers=csr_headers,
+    )
+    assert dup.status_code == 400
+
+    interest2 = client.post(
+        f"/api/partners/csr/listings/{req_id}/interest",
+        json={"pledged_amount": 18000.0},
+        headers=csr2_headers,
+    )
+    assert interest2.status_code == 201, interest2.text
+    i2_id = interest2.json()["data"]["interest_id"]
+
+    inbox = client.get("/api/admin/csr/interests", headers=headers)
+    assert inbox.status_code == 200
+    ids = {row["interest_id"] for row in inbox.json()["data"]}
+    assert interest_id in ids and i2_id in ids
+
+    mine = client.get("/api/partners/csr/my-interests", headers=csr_headers)
+    assert mine.status_code == 200
+    assert any(r["interest_id"] == interest_id for r in mine.json()["data"])
+
+    accept = client.post(f"/api/admin/csr/interests/{interest_id}/accept", headers=headers)
+    assert accept.status_code == 200, accept.text
+    body = accept.json()["data"]
+    assert body["requirement"]["status"] == "CSR_PLEDGED"
+    assert body["requirement"]["csr_sponsor"]["company_name"].startswith("Test Foundation")
+    assert body["interest"]["status"] == "ACCEPTED"
+
+    # Sibling rejected
+    inbox2 = client.get("/api/admin/csr/interests", headers=headers)
+    by_id = {r["interest_id"]: r for r in inbox2.json()["data"]}
+    assert by_id[i2_id]["status"] == "REJECTED"
+
+    # Requirement no longer accepts interest
+    late = client.post(
+        f"/api/partners/csr/listings/{req_id}/interest",
+        json={"notes": "too late"},
+        headers=csr2_headers,
+    )
+    assert late.status_code == 400
+
+    fulfill = client.post(f"/api/admin/csr/requirements/{req_id}/fulfill", headers=headers)
+    assert fulfill.status_code == 200
+    assert fulfill.json()["data"]["status"] == "FULFILLED"
+
+    client.delete(f"/api/admin/csr/requirements/{req_id}", headers=headers)

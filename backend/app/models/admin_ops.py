@@ -77,6 +77,33 @@ class CSRPledgeRequest(BaseModel):
     pledged_amount: Optional[float] = Field(default=None, ge=0, description="Pledged amount in INR")
     notes: Optional[str] = None
 
+
+class CSRInterestCreate(BaseModel):
+    """Non-locking interest from a CSR company (admin may later accept one)."""
+    company_name: Optional[str] = Field(default=None, min_length=2, description="Defaults to signed-in company name")
+    contact_person: Optional[str] = Field(default=None, description="Liaison name")
+    email: Optional[EmailStr] = Field(default=None, description="Corporate contact email")
+    pledged_amount: Optional[float] = Field(default=None, ge=0, description="Indicative amount in INR")
+    notes: Optional[str] = Field(default=None, max_length=500)
+
+
+class CSRInterestResponse(BaseModel):
+    interest_id: str
+    requirement_id: str
+    hospital_id: str
+    company_name: str
+    contact_person: Optional[str] = None
+    email: Optional[str] = None
+    pledged_amount: Optional[float] = None
+    notes: Optional[str] = None
+    status: Literal["PENDING", "ACCEPTED", "REJECTED"] = "PENDING"
+    csr_user_id: Optional[str] = None
+    created_at: str
+    updated_at: Optional[str] = None
+    requirement_title: Optional[str] = None
+    requirement_status: Optional[str] = None
+
+
 class CSRRequirementResponse(BaseModel):
     requirement_id: str
     title: str
@@ -87,5 +114,6 @@ class CSRRequirementResponse(BaseModel):
     total_estimated_cost: float
     status: Literal["POSTED", "CSR_PLEDGED", "FULFILLED"] = "POSTED"
     csr_sponsor: Optional[dict] = None
+    interests_count: int = 0
     created_at: str
     updated_at: Optional[str] = None

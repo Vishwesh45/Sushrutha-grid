@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.database import get_database
 from app.middleware.auth import get_current_user, require_roles
-from app.models.admin_ops import VolunteerApplicationCreate, CSRPledgeRequest
+from app.models.admin_ops import VolunteerApplicationCreate, CSRPledgeRequest, CSRInterestCreate
 from app.routes.ws import broadcast_event
 from app.services.hospital_service import get_hospital_by_id, get_all_hospitals
 
@@ -196,13 +196,120 @@ def list_csr_requirement_listings(
     return {"success": True, "total_count": len(rows), "data": rows}
 
 
+@router.post("/csr/listings/{req_id}/interest", status_code=status.HTTP_201_CREATED)
+def partner_csr_express_interest(
+    req_id: str,
+    payload: CSRInterestCreate,
+    current_user: dict = Depends(require_roles(["csr", "admin"])),
+):
+    """
+    Express non-locking interest in a POSTED requirement.
+    Multiple companies may register; admin Accept locks one sponsor.
+    """
+    db = get_database()
+    req_id_clean = req_id.strip()
+    existing = db.csr_requirements.find_one({"requirement_id": req_id_clean})
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Requirement '{req_id}' not found.")
+    if str(existing.get("status") or "").upper() not in ("POSTED", "OPEN"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Requirement is already {existing.get('status')}. Only POSTED lists accept new interest.",
+        )
+
+    # One pending interest per company user per requirement
+    dup = db.csr_interests.find_one({
+        "requirement_id": req_id_clean,
+        "csr_user_id": current_user["id"],
+        "status": "PENDING",
+    })
+    if dup:
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a pending interest on this requirement.",
+        )
+
+    now = datetime.utcnow().isoformat() + "Z"
+    hid = existing.get("hospital_id") or OPERATIONAL_HID
+    company = (payload.company_name or current_user.get("name") or "CSR Sponsor").strip()
+    count = db.csr_interests.count_documents({})
+    interest_id = f"CSRI-2026-{count + 1:04d}"
+
+    doc = {
+        "interest_id": interest_id,
+        "requirement_id": req_id_clean,
+        "hospital_id": hid,
+        "company_name": company,
+        "contact_person": (
+            (payload.contact_person or "").strip()
+            or (current_user.get("department") or "").strip()
+            or None
+        ),
+        "email": str(payload.email or current_user.get("email") or "").strip() or None,
+        "pledged_amount": payload.pledged_amount if payload.pledged_amount is not None else existing.get("total_estimated_cost", 0),
+        "notes": payload.notes.strip() if payload.notes else None,
+        "status": "PENDING",
+        "csr_user_id": current_user["id"],
+        "created_at": now,
+        "updated_at": now,
+    }
+    db.csr_interests.insert_one(doc)
+    db.csr_requirements.update_one(
+        {"requirement_id": req_id_clean},
+        {"$inc": {"interests_count": 1}, "$set": {"updated_at": now}},
+    )
+    doc.pop("_id", None)
+
+    broadcast_event("CSR_INTEREST_CREATED", {
+        "hospital_id": hid,
+        "interest_id": interest_id,
+        "requirement_id": req_id_clean,
+        "company_name": company,
+        "status": "PENDING",
+    })
+
+    return {
+        "success": True,
+        "message": f"Interest from {company} submitted. Hospital admin will review.",
+        "data": doc,
+    }
+
+
+@router.get("/csr/my-interests")
+def partner_csr_my_interests(current_user: dict = Depends(require_roles(["csr", "admin"]))):
+    """CSR company's own interest history (synced with admin decisions)."""
+    db = get_database()
+    rows = list(db.csr_interests.find(
+        {"csr_user_id": current_user["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1))
+    req_ids = list({r.get("requirement_id") for r in rows if r.get("requirement_id")})
+    titles = {}
+    statuses = {}
+    if req_ids:
+        for doc in db.csr_requirements.find(
+            {"requirement_id": {"$in": req_ids}},
+            {"_id": 0, "requirement_id": 1, "title": 1, "status": 1},
+        ):
+            titles[doc["requirement_id"]] = doc.get("title")
+            statuses[doc["requirement_id"]] = doc.get("status")
+    for r in rows:
+        rid = r.get("requirement_id")
+        r["requirement_title"] = titles.get(rid)
+        r["requirement_status"] = statuses.get(rid)
+    return {"success": True, "total_count": len(rows), "data": rows}
+
+
 @router.post("/csr/listings/{req_id}/pledge", status_code=status.HTTP_200_OK)
 def partner_csr_pledge(
     req_id: str,
     pledge: CSRPledgeRequest,
     current_user: dict = Depends(require_roles(["csr", "admin"])),
 ):
-    """CSR company pledges against a posted hospital requirement."""
+    """
+    Direct lock pledge (legacy / admin shortcut). Prefer /interest for company portal.
+    Locks requirement to CSR_PLEDGED immediately.
+    """
     db = get_database()
     req_id_clean = req_id.strip()
     existing = db.csr_requirements.find_one({"requirement_id": req_id_clean})
@@ -231,17 +338,22 @@ def partner_csr_pledge(
         "csr_user_id": current_user["id"],
     }
     hid = existing.get("hospital_id") or OPERATIONAL_HID
+    db.csr_interests.update_many(
+        {"requirement_id": req_id_clean, "status": "PENDING"},
+        {"$set": {"status": "REJECTED", "updated_at": now}},
+    )
     db.csr_requirements.update_one(
         {"requirement_id": req_id_clean},
         {"$set": {"status": "CSR_PLEDGED", "csr_sponsor": sponsor_data, "updated_at": now, "hospital_id": hid}},
     )
     updated = db.csr_requirements.find_one({"requirement_id": req_id_clean}, {"_id": 0})
 
-    broadcast_event("CSR_PLEDGE_RECORDED", {
+    broadcast_event("CSR_PLEDGED", {
         "hospital_id": hid,
         "requirement_id": req_id_clean,
         "company_name": company,
         "pledged_amount": sponsor_data["pledged_amount"],
+        "status": "CSR_PLEDGED",
     })
 
     return {
