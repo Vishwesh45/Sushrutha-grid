@@ -730,143 +730,106 @@ export default function AdminModule() {
     );
   }
 
+  const ADMIN_NAV = [
+    {
+      group: 'Floor ops',
+      items: [
+        { id: 'reception', label: 'Reception', hint: 'Desk code', icon: KeyRound },
+        { id: 'doctors', label: 'Doctors', hint: 'Roster', icon: Stethoscope },
+        { id: 'queues', label: 'OPD queue', hint: 'Tokens today', icon: BarChart3 },
+        { id: 'beds', label: 'Beds', hint: 'Ward occupancy', icon: Bed },
+      ],
+    },
+    {
+      group: 'Partners',
+      items: [
+        { id: 'volunteers', label: 'NGO / Volunteers', hint: 'Requisitions', icon: Users },
+        { id: 'csr', label: 'CSR funding', hint: 'Equipment lists', icon: Building },
+      ],
+    },
+    {
+      group: 'Insights',
+      items: [
+        { id: 'analytics', label: 'Hospital pulse', hint: 'Staffing & footfall', icon: Activity },
+        { id: 'reviews', label: 'Ratings', hint: 'Patient feedback', icon: Award },
+        { id: 'audit', label: 'Audit log', hint: 'Events & sessions', icon: ShieldAlert },
+      ],
+    },
+  ];
+
+  const activeNavLabel = ADMIN_NAV.flatMap((g) => g.items).find((i) => i.id === activeAdminTab)?.label || 'Admin';
+
   // ====================================================
   // RENDER: FULL ADMIN WORKSPACE
   // ====================================================
   return (
-    <div className="admin-workspace workspace-shell portal-page">
-      {/* 1. Admin Top Banner */}
-      <div className="admin-header-bar">
-        <div className="admin-title-cluster">
+    <div className="admin-workspace admin-workspace--console">
+      <header className="admin-console-top">
+        <div className="admin-console-brand">
           <div className="admin-shield-icon">
-            <ShieldCheck size={26} />
+            <ShieldCheck size={22} />
           </div>
           <div>
-            <h2>Admin Command Center</h2>
-            <p>Hospital Governance, Doctor Roster, Volunteer Coordination & CSR Grants</p>
+            <h2>Hospital admin</h2>
+            <p>Victoria · Command console</p>
           </div>
         </div>
-
-        <div className="admin-session-badge">
-          <div className="admin-badge-avatar">MS</div>
-          <div className="admin-badge-info">
-            <strong>{user?.name || 'Medical Superintendent'}</strong>
-            <span>ROLE: HOSPITAL ADMIN • FULL RBAC</span>
+        <div className="admin-console-top-right">
+          <div className="admin-session-badge">
+            <div className="admin-badge-avatar">{(user?.name || 'A').slice(0, 1).toUpperCase()}</div>
+            <div className="admin-badge-info">
+              <strong>{user?.name || 'Admin'}</strong>
+              <span>Administrator</span>
+            </div>
           </div>
-          <button 
-            type="button" 
-            onClick={logout} 
-            className="btn btn-outline"
-            style={{ padding: '5px 10px', fontSize: '0.78rem', marginLeft: '6px' }}
-          >
-            <LogOut size={13} style={{ marginRight: '4px' }} /> Sign Out
+          <button type="button" onClick={logout} className="btn btn-outline admin-signout-btn">
+            <LogOut size={14} /> Sign out
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* 2. Admin Sub-Navigation Ribbon */}
-      <div className="admin-subnav-ribbon">
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'reception' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('reception')}
-        >
-          <KeyRound size={16} />
-          <span>Reception Check-In</span>
-          <span className="tab-status-chip chip-active">Operational</span>
-        </button>
+      <div className="admin-console-body">
+        <aside className="admin-side-nav" aria-label="Admin sections">
+          {ADMIN_NAV.map((group) => (
+            <div key={group.group} className="admin-side-group">
+              <div className="admin-side-group-label">{group.group}</div>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active = activeAdminTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`admin-side-link ${active ? 'active' : ''}`}
+                    onClick={() => {
+                      setActiveAdminTab(item.id);
+                      if (item.id === 'reviews') fetchReviewAnalytics();
+                    }}
+                  >
+                    <Icon size={18} />
+                    <span className="admin-side-link-text">
+                      <strong>{item.label}</strong>
+                      <em>{item.hint}</em>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </aside>
 
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'doctors' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('doctors')}
-        >
-          <Stethoscope size={16} />
-          <span>Doctor & Staff Roster</span>
-          <span className="tab-status-chip chip-active">Operational</span>
-        </button>
+        <section className="admin-main-pane">
+          <div className="admin-pane-header">
+            <h3>{activeNavLabel}</h3>
+            {alertMsg && (
+              <div className={`status-alert admin-inline-alert ${alertType === 'error' ? 'alert-error' : 'alert-success'}`}>
+                {alertType === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+                <span>{alertMsg}</span>
+              </div>
+            )}
+          </div>
 
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'volunteers' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('volunteers')}
-        >
-          <Users size={16} />
-          <span>Volunteer & NGO Coordination</span>
-          <span className="tab-status-chip chip-active">Operational</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'csr' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('csr')}
-        >
-          <Building size={16} />
-          <span>CSR Funding & Equipment Demands</span>
-          <span className="tab-status-chip chip-active">Operational</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'queues' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('queues')}
-        >
-          <BarChart3 size={16} />
-          <span>OPD Token Inflow Analytics</span>
-          <span className="tab-status-chip chip-active">Operational</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'beds' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('beds')}
-        >
-          <Bed size={16} />
-          <span>Bed Allocation & Wards</span>
-          <span className="tab-status-chip chip-active">Live</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'reviews' ? 'active' : ''}`}
-          onClick={() => {
-            setActiveAdminTab('reviews');
-            fetchReviewAnalytics();
-          }}
-        >
-          <Award size={16} />
-          <span>Ratings & Reviews</span>
-          <span className="tab-status-chip chip-active">Live</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('analytics')}
-        >
-          <BarChart3 size={16} />
-          <span>Hospital Analytics & Footfall</span>
-          <span className="tab-status-chip chip-active">Live</span>
-        </button>
-
-        <button
-          type="button"
-          className={`admin-tab-btn ${activeAdminTab === 'audit' ? 'active' : ''}`}
-          onClick={() => setActiveAdminTab('audit')}
-        >
-          <ShieldAlert size={16} />
-          <span>Audit Logs & Security</span>
-          <span className="tab-status-chip chip-active">Live</span>
-        </button>
-      </div>
-
-      {/* Global Alert Notification */}
-      {alertMsg && (
-        <div className={`status-alert ${alertType === 'error' ? 'alert-error' : 'alert-success'}`}>
-          {alertType === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-          <span>{alertMsg}</span>
-        </div>
-      )}
+          <div className="admin-pane-scroll">
 
       {/* ========================================================== */}
       {/* TAB 0: RECEPTION CHECK-IN DESK                             */}
@@ -2410,6 +2373,9 @@ export default function AdminModule() {
           )}
         </div>
       )}
+          </div>
+        </section>
+      </div>
 
       {/* ========================================================== */}
       {/* MODAL 1: CREATE OR EDIT DOCTOR                             */}
