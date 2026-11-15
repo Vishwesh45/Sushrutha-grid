@@ -74,6 +74,18 @@ export default function NavigationNavbar() {
 
   const closeDrawer = () => setMobileOpen(false);
 
+  /** Role home while signed in (never public landing during a session). Remount if already there. */
+  const handleBrandClick = (e) => {
+    closeDrawer();
+    const home = isAuthenticated ? homePathForRole(role) : '/';
+    if (!isAuthenticated) return;
+    e.preventDefault();
+    navigate(home, {
+      replace: location.pathname === home,
+      state: { resetWorkspace: Date.now() },
+    });
+  };
+
   return (
     <header className={`hospital-navbar ${mobileOpen ? 'nav-mobile-open' : ''} ${onAdmin ? 'hospital-navbar--admin' : ''}`}>
       <div className="navbar-top-strip">
@@ -119,7 +131,11 @@ export default function NavigationNavbar() {
           </button>
         )}
 
-        <Link to={isAuthenticated ? homePathForRole(role) : '/'} className="navbar-brand" onClick={closeDrawer}>
+        <Link
+          to={isAuthenticated ? homePathForRole(role) : '/'}
+          className="navbar-brand"
+          onClick={handleBrandClick}
+        >
           <div className="brand-icon">+</div>
           <div>
             <div className="brand-title">Sushrutha Grid</div>

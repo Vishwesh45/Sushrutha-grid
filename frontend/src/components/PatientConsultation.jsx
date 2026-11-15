@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Home, MapPin, ClipboardList, FolderOpen, LogIn, LogOut, UserCheck,
   Navigation, Building2, ExternalLink, KeyRound, Lock, CheckCircle2,
@@ -75,12 +76,19 @@ const screenToNav = (screen) => {
 
 export default function PatientConsultation() {
   const { user, isAuthenticated, logout } = useAuth();
+  const location = useLocation();
   // 4 hubs only in the main nav — secondary screens live under Care / Find / Me
   const [primaryNav, setPrimaryNav] = useState('home');
   const [careSub, setCareSub] = useState('visit');
   const [findSub, setFindSub] = useState('nearby');
   const [meSub, setMeSub] = useState('records');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.resetWorkspace) {
+      setPrimaryNav('home');
+    }
+  }, [location.state?.resetWorkspace]);
 
   const setActiveTab = (screen) => {
     const nav = screenToNav(screen);

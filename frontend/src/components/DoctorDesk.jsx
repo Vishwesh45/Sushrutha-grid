@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Stethoscope, User, Calendar, Clock, AlertTriangle, CheckCircle2,
   ShieldCheck, FileText, Pill, Plus, Trash2, Printer, X, RefreshCw,
@@ -89,6 +90,7 @@ const tokenCompletedAt = (t) => parseLocalDate(t.completed_at || t.updated_at ||
 
 export default function DoctorDesk() {
   const { user, isAuthenticated, logout } = useAuth();
+  const location = useLocation();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Doctor Dashboard state
@@ -125,6 +127,13 @@ export default function DoctorDesk() {
   const [completedFilter, setCompletedFilter] = useState('today'); // today | yesterday | range
   const [completedFrom, setCompletedFrom] = useState('');
   const [completedTo, setCompletedTo] = useState('');
+
+  useEffect(() => {
+    if (location.state?.resetWorkspace) {
+      setDeskTab('queue');
+      setActiveToken(null);
+    }
+  }, [location.state?.resetWorkspace]);
 
   const showAlert = (msg, type = 'success') => {
     setAlertMsg(msg);

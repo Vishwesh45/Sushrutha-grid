@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   ShieldCheck, ShieldAlert, KeyRound, UserPlus, Edit, Trash2, 
   Search, Filter, RefreshCw, Stethoscope, Building, Users, 
@@ -99,11 +100,18 @@ const formatUtcDate = (dateStr) => {
 
 export default function AdminModule() {
   const { user, isAuthenticated, logout } = useAuth();
+  const location = useLocation();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Admin section sub-navigation: 'reception' | 'doctors' | 'volunteers' | 'csr' | 'queues' | 'beds' | 'analytics' | 'audit'
   const [activeAdminTab, setActiveAdminTab] = useState('reception');
   const { registerPageMenu, clearPageMenu } = useShellMenu();
+
+  useEffect(() => {
+    if (location.state?.resetWorkspace) {
+      setActiveAdminTab('reception');
+    }
+  }, [location.state?.resetWorkspace]);
 
   // Reception desk code (Victoria check-in)
   const [receptionCode, setReceptionCode] = useState(null);
