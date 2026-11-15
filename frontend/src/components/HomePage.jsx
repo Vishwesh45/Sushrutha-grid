@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import {
   Stethoscope, FileText, ShieldAlert, Tv, Database, ArrowRight,
   Heart, CheckCircle2, Mic, MapPin, Ticket, ClipboardList,
@@ -78,10 +78,15 @@ const JOURNEY = [
 
 export default function HomePage() {
   const { isConnected } = useHospitalWebSocket();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const role = isAuthenticated ? user?.role : null;
   const [openFacility, setOpenFacility] = useState('voice');
   const [activeJourney, setActiveJourney] = useState(0);
+
+  // Signed-in staff/patients belong in their workspace — never the marketing landing page
+  if (!loading && isAuthenticated && role) {
+    return <Navigate to={homePathForRole(role)} replace />;
+  }
 
   const allModules = [
     {

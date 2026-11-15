@@ -39,6 +39,7 @@ export function navLinksForRole(role) {
 export function toolLinksForRole(role) {
   if (role === 'admin') {
     return [
+      { path: '/admin', name: 'Admin console', icon: 'admin' },
       { path: '/reception-display', name: 'Reception board', icon: 'key' },
       { path: '/lobby-display', name: 'Lobby TV', icon: 'tv' },
       { path: '/volunteer', name: 'Volunteer portal', icon: 'home' },
