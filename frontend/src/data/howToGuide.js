@@ -1,5 +1,5 @@
 /**
- * Plain-language how-to. Written so a first-time user (or anyone) can follow without jargon.
+ * Plain-language how-to. Main steps = the story. alsoUseful = other live features.
  */
 
 export const HOW_TO_ROLES = [
@@ -12,32 +12,63 @@ export const HOW_TO_ROLES = [
     steps: [
       {
         do: 'Open the Patient page and sign in (or create an account).',
-        screen: 'Home page → “I am a patient”, or open /patient. Use Sign in / Register.',
+        screen: 'Home → “I am a patient”, or open /patient. Use Sign in / Register.',
       },
       {
-        do: 'At the hospital counter, ask for the desk code and enter it in the app.',
-        screen: 'Bottom tabs → Find → Desk code. Type the short code the receptionist shows you.',
+        do: 'Optional: find nearby government hospitals on the map before you travel.',
+        screen: 'Bottom tabs → Find → Nearby. Allow location if asked. Pick a hospital from the list.',
       },
       {
-        do: 'Describe how you feel (type or speak). The app suggests which department and how urgent it is.',
-        screen: 'Bottom tabs → Care → Consult. Use the mic or the text box, then submit.',
+        do: 'Optional: see which digital OPD queues are running today.',
+        screen: 'Find → Live OPD.',
       },
       {
-        do: 'You get an OPD token number. Wait. Watch your phone.',
-        screen: 'Bottom tabs → Home. You will see your token and “waiting”.',
+        do: 'At the hospital counter, ask for the desk code and enter it in the app (needed before a digital token).',
+        screen: 'Find → Desk code. Type the short code from Reception.',
       },
       {
-        do: 'When your phone says you are called, go to the room shown (the lobby TV also shows your number).',
-        screen: 'Home turns to “called” / go to chamber. Lobby screen shows the same number.',
+        do: 'Describe how you feel — type or speak. The app suggests department and urgency (green / amber / red).',
+        screen: 'Care → Consult. Mic for voice, or type, then submit.',
       },
       {
-        do: 'After the doctor finishes, open your medicine slip on your phone. You can rate the visit if you want.',
-        screen: 'Home or Me → Records for the prescription. Me → Reviews to give feedback.',
+        do: 'You get an OPD token. Wait and watch Home on your phone.',
+        screen: 'Bottom tabs → Home shows your token and waiting status.',
       },
       {
-        do: 'If you missed your turn, the app may say “skipped”. Tap Re-join to get back in line.',
-        screen: 'Home shows Skipped + a Re-join button.',
+        do: 'When you are called, go to the room shown (lobby TV shows the same number).',
+        screen: 'Home shows “called”. Lobby TV shows Now calling.',
       },
+      {
+        do: 'If you missed the call, tap Re-join to get back in line.',
+        screen: 'Home → Skipped → Re-join queue.',
+      },
+      {
+        do: 'After the doctor finishes, open your medicine slip. You can print/save it.',
+        screen: 'Home (when ready) or Me → Records. Open the slip / download.',
+      },
+      {
+        do: 'Check any follow-up the doctor set (return date / reminders).',
+        screen: 'Care → Follow-ups. A badge on Care means something is due.',
+      },
+      {
+        do: 'Rate your visit (hospital, department, doctor, waiting area).',
+        screen: 'Me → Reviews.',
+      },
+      {
+        do: 'Stuck with a simple visit question? Use Ask.',
+        screen: 'Care → Ask.',
+      },
+    ],
+    alsoUseful: [
+      { name: 'Home', detail: 'Live token, call alert, and link when prescription is ready.' },
+      { name: 'Care → Consult', detail: 'Voice or text, urgency colour, department, token.' },
+      { name: 'Care → Ask', detail: 'Simple questions about your visit.' },
+      { name: 'Care → Follow-ups', detail: 'Reminders and return dates from the doctor.' },
+      { name: 'Find → Nearby', detail: 'Map of nearby government hospitals.' },
+      { name: 'Find → Live OPD', detail: 'Which digital queues are active.' },
+      { name: 'Find → Desk code', detail: 'Reception check-in code.' },
+      { name: 'Me → Records', detail: 'Past visits and digital prescriptions.' },
+      { name: 'Me → Reviews', detail: 'Feedback after a visit.' },
     ],
   },
   {
@@ -52,25 +83,41 @@ export const HOW_TO_ROLES = [
         screen: 'Home → “I am a doctor”, or open /doctor.',
       },
       {
-        do: 'Look at Waiting patients. Only the next person in line can be called (you cannot jump ahead).',
-        screen: 'Tab “Waiting patients”. The next token has Call enabled; later ones stay locked.',
+        do: 'Open Waiting patients. Red / amber / green show urgency. Only the next person can be called.',
+        screen: 'Tab “Waiting patients”. Call is unlocked only for the next token.',
       },
       {
-        do: 'Tap Call for the next patient. Their phone and the lobby TV both update.',
-        screen: 'Call button on that row. Patient phone + lobby show “now calling”.',
+        do: 'Tap Call (or use Call next at the top). Patient phone and lobby TV update together.',
+        screen: 'Call / Call next. You can Recall if they need another announcement.',
       },
       {
-        do: 'When they enter your room, tap Start consultation.',
-        screen: 'Start consultation. Status becomes in consultation.',
+        do: 'When they enter your room, tap Start consultation. You will see their complaint and past history if available.',
+        screen: 'Start consultation → Consultation tab (dossier + history).',
       },
       {
-        do: 'Only now write the prescription. If they did not come, tap Skip instead — you cannot write a prescription for a skipped patient.',
-        screen: '“Write prescription” / Digital prescription tab works only during consultation. Skip = no prescription.',
+        do: 'Write clinical notes (impression, findings). Then continue to the prescription.',
+        screen: 'Consultation notes fields, then Write prescription / Digital prescription.',
       },
       {
-        do: 'Issue the prescription. That visit is finished. See past visits under Completed.',
-        screen: 'Digital prescription → issue. Then Completed tab.',
+        do: 'Add medicines (dose, frequency, duration), optional tests, diet advice, and follow-up date. Issue the slip.',
+        screen: 'Digital prescription form → Issue. Visit becomes Completed.',
       },
+      {
+        do: 'If they did not come, tap Skip. Do not write a prescription for a skipped patient.',
+        screen: 'Skip on the queue or consultation. Prescription stays locked until they rejoin and you start consult again.',
+      },
+      {
+        do: 'Review finished visits under Completed (today / yesterday / date range). Open or download an old Rx.',
+        screen: 'Completed tab + filters. View prescription.',
+      },
+    ],
+    alsoUseful: [
+      { name: 'Waiting patients', detail: 'Live queue, Call, Consult, Skip, priority colours.' },
+      { name: 'Consultation', detail: 'Patient dossier, history, clinical notes.' },
+      { name: 'Digital prescription', detail: 'Medicines, advice, follow-up — only while in consultation.' },
+      { name: 'Completed', detail: 'Finished visits; view / download Rx; date filters.' },
+      { name: 'Call next', detail: 'Shortcut to call the head of the line.' },
+      { name: 'Recall', detail: 'Call again if the patient did not hear the first time.' },
     ],
   },
   {
@@ -78,36 +125,59 @@ export const HOW_TO_ROLES = [
     label: 'I am hospital admin',
     path: '/admin',
     button: 'Go to admin center',
-    oneLine: 'You set the desk code, manage doctors, watch the day’s queue, and handle NGO / CSR requests.',
+    oneLine: 'You set the desk code, manage doctors, watch the day, beds, partners, ratings, and the audit log.',
     steps: [
       {
-        do: 'Sign in as admin and open the Admin center.',
+        do: 'Sign in as admin. On phone, use the menu (☰) for the same sections as the side menu.',
         screen: 'Home → “Hospital admin”, or open /admin.',
       },
       {
         do: 'Create today’s desk code so patients can check in on their phones.',
-        screen: 'Side menu → Reception. Generate / show the code.',
+        screen: 'Floor ops → Reception → generate / show code.',
       },
       {
-        do: 'Keep the doctor list correct (room, shift, available or not).',
-        screen: 'Side menu → Doctors.',
+        do: 'Add or edit doctors (department, room, shift, available / busy / off). Remove if needed.',
+        screen: 'Floor ops → Doctors → Add / Edit / status / delete.',
       },
       {
-        do: 'Watch how many tokens came today (you do not call patients from here — doctors do that).',
-        screen: 'OPD queue and Decisions today.',
+        do: 'Watch today’s tokens and department load (you do not call patients here — doctors do).',
+        screen: 'Floor ops → OPD queue. Filter by today / date / month / department.',
       },
       {
-        do: 'For volunteers: post what help you need, then Accept NGO applications.',
-        screen: 'NGO / Volunteers → post need, then check applications.',
+        do: 'Check ward bed occupancy.',
+        screen: 'Floor ops → Beds. Update counts if your process allows.',
       },
       {
-        do: 'For CSR: post equipment needs. When companies show interest, Accept one. When items arrive, mark Fulfilled.',
-        screen: 'CSR funding → Requirements, then Company Interests → Accept, later Mark fulfilled.',
+        do: 'See clear numbers for today’s decisions (roster + OPD summary).',
+        screen: 'Insights → Decisions today.',
       },
       {
-        do: 'Read ratings under Performance (hospital vs doctors).',
-        screen: 'Performance tab.',
+        do: 'Post volunteer needs. Then open applications and Accept, Reject, or Mark deployed.',
+        screen: 'Partners → NGO / Volunteers → Request Volunteers, then Check NGO Requests.',
       },
+      {
+        do: 'Post CSR equipment lists. Review company interests: Accept one (or use Offline Record Pledge). When items arrive, Mark fulfilled.',
+        screen: 'Partners → CSR funding → Requirements | Company Interests. Fulfilled on the requirement card.',
+      },
+      {
+        do: 'Read ratings: Hospital view or Doctors view. Export doctor rows as CSV if needed.',
+        screen: 'Insights → Performance → Hospital | Doctors + export.',
+      },
+      {
+        do: 'Open the audit log for important events and sessions.',
+        screen: 'Insights → Audit log. Filter by event type if needed.',
+      },
+    ],
+    alsoUseful: [
+      { name: 'Reception', detail: 'Desk check-in code for patients.' },
+      { name: 'Doctors', detail: 'Full roster: add, edit, status, delete.' },
+      { name: 'OPD queue', detail: 'Token analytics and filters.' },
+      { name: 'Beds', detail: 'Ward bed occupancy.' },
+      { name: 'NGO / Volunteers', detail: 'Post needs + Accept / Reject / Deploy applications.' },
+      { name: 'CSR funding', detail: 'Requirement lists, interests inbox, offline pledge, fulfill.' },
+      { name: 'Decisions today', detail: 'Clear shift numbers.' },
+      { name: 'Performance', detail: 'Hospital vs doctor ratings + CSV.' },
+      { name: 'Audit log', detail: 'Events and sessions history.' },
     ],
   },
   {
@@ -115,20 +185,26 @@ export const HOW_TO_ROLES = [
     label: 'I run the lobby TV',
     path: '/lobby-display',
     button: 'Open lobby screen',
-    oneLine: 'Put this page on a big screen in the waiting hall. It shows which token is being called.',
+    oneLine: 'Big screen in the waiting hall — shows which token is being called and plays a sound.',
     steps: [
       {
         do: 'Open the lobby page on a TV or tablet facing the seats. No login needed.',
         screen: 'Open /lobby-display and leave it on.',
       },
       {
-        do: 'When a doctor calls a patient, the big number appears and a sound plays.',
-        screen: '“Now calling” + room name on the TV.',
+        do: 'When a doctor calls someone, the large token number and room appear, and a chime plays.',
+        screen: 'Now calling + room text + sound.',
       },
       {
-        do: 'Patients look at the TV (and their phone) and walk to that room.',
-        screen: 'Same call as the doctor desk — you do not type anything.',
+        do: 'Patients walk to that room. You do not type anything on this screen.',
+        screen: 'Same live call as the doctor desk and patient phone.',
       },
+    ],
+    alsoUseful: [
+      { name: 'Now calling', detail: 'Large token number when status is Called.' },
+      { name: 'Sound cue', detail: 'Chime so people notice without staring.' },
+      { name: 'Room guide', detail: 'Which chamber to walk to.' },
+      { name: 'Reception display', detail: 'Separate page /reception-display if the desk needs its own screen.' },
     ],
   },
   {
@@ -136,24 +212,34 @@ export const HOW_TO_ROLES = [
     label: 'I am from an NGO',
     path: '/volunteer',
     button: 'Go to NGO portal',
-    oneLine: 'The hospital posts volunteer needs. Your NGO applies. Admin accepts your team.',
+    oneLine: 'Hospital posts volunteer needs. Your NGO applies. Admin accepts and deploys your team.',
     steps: [
       {
         do: 'Open the NGO portal from the website footer and register / sign in as an organization.',
-        screen: 'Footer → NGO → Register or Sign in. Then /volunteer.',
+        screen: 'Footer → NGO → Register or Sign in → /volunteer.',
       },
       {
-        do: 'See the hospital’s open requests (how many people, which area, how many days).',
-        screen: '“Open hospital openings” list.',
+        do: 'Filter by hospital if you want, then refresh the list of openings.',
+        screen: 'Hospital dropdown + Refresh.',
       },
       {
-        do: 'Apply with your NGO name and how many volunteers you can send.',
-        screen: '“Apply as NGO” form.',
+        do: 'Read each opening (people needed, department, days, duration).',
+        screen: '“Open hospital openings”.',
       },
       {
-        do: 'Wait for the hospital to Accept (then Deploy when you are on site). Check your status anytime.',
-        screen: '“Our applications” — Pending / Accepted / Deployed / Rejected.',
+        do: 'Apply with NGO name, how many volunteers, skills, phone, email, and notes.',
+        screen: '“Apply as NGO” form → Submit.',
       },
+      {
+        do: 'Watch status: Pending → Accepted → Deployed (or Rejected).',
+        screen: '“Our applications”.',
+      },
+    ],
+    alsoUseful: [
+      { name: 'Hospital filter', detail: 'Show openings for one hospital or all.' },
+      { name: 'Openings list', detail: 'Live requests posted by admin.' },
+      { name: 'Apply form', detail: 'Team size, skills, liaison contacts.' },
+      { name: 'Our applications', detail: 'Your NGO’s status history.' },
     ],
   },
   {
@@ -161,33 +247,42 @@ export const HOW_TO_ROLES = [
     label: 'I am from a CSR company',
     path: '/csr',
     button: 'Go to CSR portal',
-    oneLine: 'The hospital lists equipment needs. You show interest. Admin chooses one sponsor, then confirms when goods arrive.',
+    oneLine: 'Hospital lists equipment needs. You express interest. Admin picks one sponsor, then marks goods received.',
     steps: [
       {
         do: 'Open the CSR portal from the footer and register / sign in as your company.',
-        screen: 'Footer → CSR → Register or Sign in. Then /csr.',
+        screen: 'Footer → CSR → Register or Sign in → /csr.',
       },
       {
-        do: 'Browse the hospital’s posted requirement lists (items and cost).',
+        do: 'Filter by hospital if needed and refresh listings.',
+        screen: 'Hospital dropdown + Refresh.',
+      },
+      {
+        do: 'Open a posted list. See items, priority, and target cost.',
         screen: '“Hospital requirements”.',
       },
       {
-        do: 'Click Express interest. This does not lock the list — other companies can also apply.',
-        screen: 'Express interest form → Submit interest.',
+        do: 'Express interest with company name, contact, indicative amount, and notes. This does not lock the list.',
+        screen: 'Express interest → Submit. Other companies can still apply.',
       },
       {
-        do: 'Hospital admin Accepts one company. If it is you, you are the sponsor. If not, your interest is rejected.',
-        screen: '“My interests” shows Pending / Accepted / Rejected.',
+        do: 'Track your row: Pending, Accepted (you are sponsor), or Rejected (another company was chosen).',
+        screen: '“My interests”.',
       },
       {
-        do: 'When the hospital receives the items, they mark the list Fulfilled.',
-        screen: 'The requirement status becomes Fulfilled on the listings.',
+        do: 'When the hospital receives the items, the list shows Fulfilled.',
+        screen: 'Requirement status on the listings.',
       },
+    ],
+    alsoUseful: [
+      { name: 'Hospital filter', detail: 'One hospital or all.' },
+      { name: 'Requirements', detail: 'Posted equipment lists with cost.' },
+      { name: 'Express interest', detail: 'Non-locking interest with amount and notes.' },
+      { name: 'My interests', detail: 'Pending / Accepted / Rejected history.' },
     ],
   },
 ];
 
-/** Tiny big-picture strip — everyday words only */
 export const HOW_THE_DAY_WORKS = [
   { n: '1', text: 'Patient checks in and gets a token' },
   { n: '2', text: 'Doctor calls the next token' },

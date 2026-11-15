@@ -298,6 +298,71 @@
   margin-bottom: 4px;
 }
 
+.htu-block-title {
+  margin: 18px 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--htu-muted);
+}
+
+.htu-also {
+  margin-top: 8px;
+  padding-top: 4px;
+}
+
+.htu-also-lead {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  color: var(--htu-muted);
+}
+
+.htu-also-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.htu-also-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--htu-line);
+  background: var(--htu-soft);
+}
+
+.htu-also-list strong {
+  font-size: 0.88rem;
+  color: var(--htu-ink);
+}
+
+.htu-also-list span {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.4;
+}
+
+.htu-more {
+  padding-bottom: 8px;
+}
+
+.htu-more p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--htu-muted);
+}
+
+.htu-more a {
+  color: var(--htu-accent);
+  font-weight: 700;
+}
+
 .htu-steps-footer {
   display: flex;
   flex-wrap: wrap;

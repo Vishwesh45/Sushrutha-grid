@@ -53,8 +53,8 @@ export default function HowToUsePage() {
           </p>
           <h1>How to use this app</h1>
           <p className="htu-lead">
-            Pick who you are. Then follow the numbered steps. Each step says what to do
-            and where to click on the screen.
+            Pick who you are. Follow the numbered steps (what to do + where to click).
+            Under that, every main screen for that role is listed so nothing important is missed.
           </p>
         </div>
       </header>
@@ -88,7 +88,7 @@ export default function HowToUsePage() {
                 role="tab"
                 aria-selected={active}
                 className={`htu-who-btn ${active ? 'active' : ''}`}
-                  onClick={() => pickRole(r.id)}
+                onClick={() => pickRole(r.id)}
               >
                 <RIcon size={20} />
                 <span>{r.label}</span>
@@ -112,6 +112,7 @@ export default function HowToUsePage() {
           </Link>
         </div>
 
+        <h3 className="htu-block-title">Do this in order</h3>
         <ol className="htu-plain-steps">
           {role.steps.map((step, idx) => (
             <li key={`${role.id}-${idx}`}>
@@ -127,6 +128,21 @@ export default function HowToUsePage() {
           ))}
         </ol>
 
+        {(role.alsoUseful || []).length > 0 && (
+          <div className="htu-also">
+            <h3 className="htu-block-title">All screens for this role</h3>
+            <p className="htu-also-lead">Quick map of what exists so you do not miss a feature.</p>
+            <ul className="htu-also-list">
+              {role.alsoUseful.map((item) => (
+                <li key={item.name}>
+                  <strong>{item.name}</strong>
+                  <span>{item.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="htu-steps-footer">
           <Link to={role.path} className="htu-open-link">
             Open this page now <ArrowRight size={14} />
@@ -135,6 +151,13 @@ export default function HowToUsePage() {
             Back to home
           </Link>
         </div>
+      </section>
+
+      <section className="htu-plain-section htu-more">
+        <p>
+          Want project / clinical background for mentors?{' '}
+          <Link to="/knowledge-base">Open the knowledge base</Link>.
+        </p>
       </section>
     </div>
   );
