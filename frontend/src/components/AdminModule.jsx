@@ -11,10 +11,6 @@ import { useAuth } from '../context/AuthContext';
 import { useHospitalWebSocket } from '../services/useHospitalWebSocket';
 import UnifiedAuthModal from './UnifiedAuthModal';
 import api from '../services/api';
-import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, Legend, Cell,
-} from 'recharts';
 import './AdminModule.css';
 
 const OPERATIONAL_HOSPITAL_ID = 'HOSP-BLR-001';
@@ -764,32 +760,27 @@ export default function AdminModule() {
   // ====================================================
   return (
     <div className="admin-workspace admin-workspace--console">
-      <header className="admin-console-top">
-        <div className="admin-console-brand">
-          <div className="admin-shield-icon">
-            <ShieldCheck size={22} />
+      <div className="admin-console-body">
+        <aside className="admin-side-nav" aria-label="Admin sections">
+          <div className="admin-side-brand">
+            <div className="admin-shield-icon">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <strong>Sushrutha</strong>
+              <span>Hospital admin</span>
+            </div>
           </div>
-          <div>
-            <h2>Hospital admin</h2>
-            <p>Victoria · Command console</p>
-          </div>
-        </div>
-        <div className="admin-console-top-right">
-          <div className="admin-session-badge">
+
+          <div className="admin-side-profile">
             <div className="admin-badge-avatar">{(user?.name || 'A').slice(0, 1).toUpperCase()}</div>
-            <div className="admin-badge-info">
+            <div className="admin-side-profile-text">
               <strong>{user?.name || 'Admin'}</strong>
               <span>Administrator</span>
             </div>
           </div>
-          <button type="button" onClick={logout} className="btn btn-outline admin-signout-btn">
-            <LogOut size={14} /> Sign out
-          </button>
-        </div>
-      </header>
 
-      <div className="admin-console-body">
-        <aside className="admin-side-nav" aria-label="Admin sections">
+          <div className="admin-side-menu-label">Main menu</div>
           {ADMIN_NAV.map((group) => (
             <div key={group.group} className="admin-side-group">
               <div className="admin-side-group-label">{group.group}</div>
@@ -806,28 +797,35 @@ export default function AdminModule() {
                       if (item.id === 'reviews') fetchReviewAnalytics();
                     }}
                   >
-                    <Icon size={18} />
+                    <Icon size={17} className="admin-side-ico" />
                     <span className="admin-side-link-text">
                       <strong>{item.label}</strong>
-                      <em>{item.hint}</em>
                     </span>
+                    <span className="admin-side-chevron">›</span>
                   </button>
                 );
               })}
             </div>
           ))}
+
+          <button type="button" onClick={logout} className="admin-side-logout">
+            <LogOut size={16} /> Sign out
+          </button>
         </aside>
 
         <section className="admin-main-pane">
-          <div className="admin-pane-header">
-            <h3>{activeNavLabel}</h3>
+          <header className="admin-console-top">
+            <div>
+              <h3>{activeNavLabel}</h3>
+              <p>Victoria Hospital · live operations</p>
+            </div>
             {alertMsg && (
               <div className={`status-alert admin-inline-alert ${alertType === 'error' ? 'alert-error' : 'alert-success'}`}>
                 {alertType === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
                 <span>{alertMsg}</span>
               </div>
             )}
-          </div>
+          </header>
 
           <div className="admin-pane-scroll">
 
@@ -1630,80 +1628,50 @@ export default function AdminModule() {
               </div>
             </div>
 
-            {/* Core Analytics KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginTop: '20px' }}>
-              <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '8px', padding: '16px' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase' }}>
-                  Total Patient Inflow
-                </span>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0c4a6e', margin: '4px 0 0' }}>
-                  {analyticsData?.total_tokens || 0}
-                </h3>
-                <span style={{ fontSize: '0.72rem', color: '#0284c7' }}>
-                  Tokens in selected period
-                </span>
+            <div className="admin-kpi-row" style={{ marginTop: 16 }}>
+              <div className="admin-kpi-card">
+                <span>Patient inflow</span>
+                <strong>{analyticsData?.total_tokens || 0}</strong>
+                <em>Tokens in selected period</em>
               </div>
-
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase' }}>
-                  High Urgency / Emergency
-                </span>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#991b1b', margin: '4px 0 0' }}>
-                  {analyticsData?.severity_distribution?.RED || 0}
-                </h3>
-                <span style={{ fontSize: '0.72rem', color: '#b91c1c' }}>
-                  Flagged severe cases
-                </span>
+              <div className="admin-kpi-card admin-kpi-warn">
+                <span>Emergency (RED)</span>
+                <strong>{analyticsData?.severity_distribution?.RED || 0}</strong>
+                <em>Open senior desks first</em>
               </div>
-
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '16px' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#15803d', textTransform: 'uppercase' }}>
-                  Routine & Moderate
-                </span>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#166534', margin: '4px 0 0' }}>
-                  {(analyticsData?.severity_distribution?.GREEN || 0) + (analyticsData?.severity_distribution?.AMBER || 0)}
-                </h3>
-                <span style={{ fontSize: '0.72rem', color: '#16a34a' }}>
-                  Standard outpatient cases
-                </span>
+              <div className="admin-kpi-card">
+                <span>Routine + urgent</span>
+                <strong>{(analyticsData?.severity_distribution?.GREEN || 0) + (analyticsData?.severity_distribution?.AMBER || 0)}</strong>
+                <em>Standard OPD load</em>
               </div>
-
-              <div style={{ background: '#fdf4ff', border: '1px solid #f0abfc', borderRadius: '8px', padding: '16px' }}>
-                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#a21caf', textTransform: 'uppercase' }}>
-                  Departments Active
-                </span>
-                <h3 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#86198f', margin: '4px 0 0' }}>
-                  {Object.keys(analyticsData?.department_distribution || {}).length}
-                </h3>
-                <span style={{ fontSize: '0.72rem', color: '#a21caf' }}>
-                  With patient registrations
-                </span>
+              <div className="admin-kpi-card">
+                <span>Departments active</span>
+                <strong>{Object.keys(analyticsData?.department_distribution || {}).length}</strong>
+                <em>With registrations</em>
               </div>
             </div>
 
-            {/* Department Inflow Distribution Matrix */}
             {analyticsData?.department_distribution && Object.keys(analyticsData.department_distribution).length > 0 && (
-              <div style={{ marginTop: '24px' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: '10px' }}>
-                  Department Footfall Distribution Breakdown:
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
-                  {Object.entries(analyticsData.department_distribution).map(([dept, count]) => {
+              <div className="admin-decision-card" style={{ marginTop: 14 }}>
+                <h4>Where patients are going</h4>
+                <p>Reinforce the tallest bars first — those OPDs are busiest.</p>
+                {Object.entries(analyticsData.department_distribution)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([dept, count]) => {
                     const total = analyticsData.total_tokens || 1;
                     const pct = Math.round((count / total) * 100);
                     return (
-                      <div key={dept} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 14px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>{dept}</span>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0284c7' }}>{count} ({pct}%)</span>
+                      <div key={dept} className="admin-bar-row">
+                        <div className="admin-bar-meta">
+                          <span>{dept}</span>
+                          <strong>{count} ({pct}%)</strong>
                         </div>
-                        <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-                          <div style={{ width: `${pct}%`, height: '100%', background: '#0284c7' }} />
+                        <div className="admin-bar-track">
+                          <div className="admin-bar-fill" style={{ width: `${pct}%`, background: '#2563eb' }} />
                         </div>
                       </div>
                     );
                   })}
-                </div>
               </div>
             )}
           </div>
@@ -1934,26 +1902,21 @@ export default function AdminModule() {
             </div>
           );
         };
-        const deptChart = (reviewAnalytics?.departments || []).map((d) => {
-          const name = String(d.department || 'Department');
-          return {
-            department: name.length > 14 ? `${name.slice(0, 12)}…` : name,
-            avg: d.avg_department_rating,
-            fill: d.severity_band === 'red' ? '#dc2626' : d.severity_band === 'yellow' ? '#d97706' : '#059669',
-          };
-        });
-        const trend = (reviewAnalytics?.trend_last_14_days || []).map((t) => ({
-          ...t,
-          avg: t.avg_overall_rating ?? t.avg_hospital_rating ?? 0,
-        }));
+        const starMix = reviewAnalytics?.facility?.rating_distribution
+          || reviewAnalytics?.hospital_rating_distribution
+          || [];
+        const starTotal = Math.max(1, starMix.reduce((s, e) => s + (e.count || 0), 0));
+        const deptRows = (reviewAnalytics?.departments || []).slice().sort(
+          (a, b) => (a.avg_department_rating || 0) - (b.avg_department_rating || 0)
+        );
+        const trend = (reviewAnalytics?.trend_last_14_days || []).slice(-7);
 
         return (
-        <div className="card" style={{ padding: '24px', marginTop: 8 }}>
+        <div className="card admin-plain-analytics" style={{ padding: '24px', marginTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: '1.15rem', color: '#0f172a' }}>Ratings analysis</h3>
-              <p style={{ margin: 0, fontSize: '0.86rem', color: '#64748b' }}>
-                {reviewAnalytics?.hospital_name || 'Victoria Hospital'} · facility · department · doctor · ward · emergency bad-review lookup
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: 1.45, maxWidth: 640 }}>
+                Plain scores so floor managers can spot weak departments and bad reviews fast — no chart reading required.
               </p>
             </div>
             <button type="button" className="btn btn-outline" onClick={fetchReviewAnalytics} disabled={loadingReviews}>
@@ -1962,49 +1925,43 @@ export default function AdminModule() {
           </div>
 
           {loadingReviews && !reviewAnalytics ? (
-            <p style={{ color: '#64748b' }}>Loading review analytics…</p>
+            <p className="admin-muted">Loading review analytics…</p>
           ) : !reviewAnalytics || reviewAnalytics.total_reviews === 0 ? (
-            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 28, textAlign: 'center', color: '#64748b' }}>
+            <div className="admin-empty-hint">
               No structured reviews yet. Patients submit from the Reviews tab.
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 14 }}>
+              <div className="admin-kpi-row">
                 {scoreCard('Overall', reviewAnalytics.overall?.avg_rating, reviewAnalytics.overall?.severity_band, reviewAnalytics.total_reviews)}
                 {scoreCard('Facility', reviewAnalytics.facility?.avg_rating, reviewAnalytics.facility?.severity_band, reviewAnalytics.facility?.review_count)}
-                {scoreCard('Emergency flags', reviewAnalytics.emergency_count, reviewAnalytics.emergency_count > 0 ? 'red' : 'green', reviewAnalytics.emergency_count)}
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14 }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Legend</div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                    {pill('green', 'Good ≥4')}
-                    {pill('yellow', 'Avg 3')}
-                    {pill('red', 'Bad ≤2')}
-                  </div>
+                {scoreCard('Bad alerts', reviewAnalytics.emergency_count, reviewAnalytics.emergency_count > 0 ? 'red' : 'green', reviewAnalytics.emergency_count)}
+                <div className="admin-kpi-card">
+                  <span>How to read</span>
+                  <strong style={{ fontSize: '1rem' }}>≥4 good</strong>
+                  <em>3 = average · ≤2 = act now</em>
                 </div>
               </div>
 
               {(reviewAnalytics.xai_hospital_summary || reviewAnalytics.overall?.xai_summary) && (
-                <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 12, padding: 14, marginBottom: 18 }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 800, color: '#6d28d9', textTransform: 'uppercase', marginBottom: 4 }}>XAI · Hospital brief</div>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#4c1d95', lineHeight: 1.5 }}>
+                <div className="admin-decision-card" style={{ marginBottom: 14 }}>
+                  <h4>What this means</h4>
+                  <p style={{ margin: 0 }}>
                     {reviewAnalytics.xai_hospital_summary || reviewAnalytics.overall?.xai_summary}
                   </p>
                   {reviewAnalytics.facility?.xai_summary && (
-                    <p style={{ margin: '8px 0 0', fontSize: '0.84rem', color: '#5b21b6', lineHeight: 1.45 }}>
-                      {reviewAnalytics.facility.xai_summary}
-                    </p>
+                    <p style={{ margin: '8px 0 0' }}>{reviewAnalytics.facility.xai_summary}</p>
                   )}
                 </div>
               )}
 
-              {/* Emergency lookup */}
-              <div style={{ border: '1.5px solid #fecaca', background: '#fff5f5', borderRadius: 12, padding: 14, marginBottom: 18 }}>
+              <div className="admin-decision-card" style={{ marginBottom: 14, borderColor: '#fecaca', background: '#fff5f5' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <strong style={{ color: '#991b1b' }}>Emergency lookup — very bad reviews (≤2★)</strong>
+                  <h4 style={{ margin: 0, color: '#991b1b' }}>Act on these bad reviews (≤2★)</h4>
                   {pill('red', `${reviewAnalytics.emergency_count || 0} alerts`)}
                 </div>
                 {(reviewAnalytics.emergency_alerts || []).length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>No critical facility / department / doctor / ward alerts.</p>
+                  <p className="admin-muted" style={{ margin: 0 }}>No critical facility / department / doctor / ward alerts.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
                     {(reviewAnalytics.emergency_alerts || []).slice(0, 12).map((a) => (
@@ -2025,68 +1982,68 @@ export default function AdminModule() {
                 )}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 18 }}>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 8 }}>Facility star mix</strong>
-                  <div style={{ width: '100%', height: 220 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={reviewAnalytics.facility?.rating_distribution || reviewAnalytics.hospital_rating_distribution || []}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="stars" tickFormatter={(v) => `${v}★`} />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip />
-                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                          {(reviewAnalytics.facility?.rating_distribution || reviewAnalytics.hospital_rating_distribution || []).map((entry) => (
-                            <Cell
-                              key={`c-${entry.stars}`}
-                              fill={entry.stars <= 2 ? '#dc2626' : entry.stars === 3 ? '#d97706' : '#059669'}
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, fontSize: '0.72rem', color: '#64748b' }}>
-                    <span style={{ color: '#dc2626' }}>1–2 red</span>
-                    <span style={{ color: '#d97706' }}>3 yellow</span>
-                    <span style={{ color: '#059669' }}>4–5 green</span>
-                  </div>
+              <div className="admin-decision-grid" style={{ marginBottom: 14 }}>
+                <div className="admin-decision-card">
+                  <h4>Star mix (facility)</h4>
+                  <p>How many reviews landed on each star — red bars need follow-up.</p>
+                  {starMix.length === 0 ? (
+                    <p className="admin-muted">No star breakdown yet.</p>
+                  ) : starMix.map((entry) => {
+                    const color = entry.stars <= 2 ? '#dc2626' : entry.stars === 3 ? '#d97706' : '#059669';
+                    return (
+                      <div key={`star-${entry.stars}`} className="admin-bar-row">
+                        <div className="admin-bar-meta">
+                          <span>{entry.stars}★</span>
+                          <strong>{entry.count || 0}</strong>
+                        </div>
+                        <div className="admin-bar-track">
+                          <div className="admin-bar-fill" style={{ width: `${((entry.count || 0) / starTotal) * 100}%`, background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 8 }}>By department</strong>
-                  <div style={{ width: '100%', height: 220 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={deptChart}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="department" tick={{ fontSize: 10 }} />
-                        <YAxis domain={[0, 5]} />
-                        <Tooltip />
-                        <Bar dataKey="avg" name="Dept avg ★" radius={[6, 6, 0, 0]}>
-                          {deptChart.map((entry, idx) => (
-                            <Cell key={`dept-${idx}`} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
+
+                <div className="admin-decision-card">
+                  <h4>Departments (lowest first)</h4>
+                  <p>Weakest scores rise to the top so you know where to intervene.</p>
+                  {deptRows.length === 0 ? (
+                    <p className="admin-muted">No department ratings yet.</p>
+                  ) : deptRows.slice(0, 10).map((d) => {
+                    const avg = d.avg_department_rating || 0;
+                    const color = d.severity_band === 'red' ? '#dc2626' : d.severity_band === 'yellow' ? '#d97706' : '#059669';
+                    return (
+                      <div key={d.department} className="admin-bar-row">
+                        <div className="admin-bar-meta">
+                          <span>{d.department}</span>
+                          <strong>{avg}★</strong>
+                        </div>
+                        <div className="admin-bar-track">
+                          <div className="admin-bar-fill" style={{ width: `${(avg / 5) * 100}%`, background: color }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 8 }}>14-day trend</strong>
-                  <div style={{ width: '100%', height: 220 }}>
-                    <ResponsiveContainer>
-                      <LineChart data={trend}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                        <YAxis yAxisId="left" allowDecimals={false} />
-                        <YAxis yAxisId="right" orientation="right" domain={[0, 5]} />
-                        <Tooltip />
-                        <Legend />
-                        <Line yAxisId="left" type="monotone" dataKey="reviews" name="Reviews" stroke="#0284c7" strokeWidth={2} dot={false} />
-                        <Line yAxisId="right" type="monotone" dataKey="avg" name="Avg ★" stroke="#d97706" strokeWidth={2} dot={false} />
-                        <Line yAxisId="left" type="monotone" dataKey="bad_reviews" name="Bad flags" stroke="#dc2626" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+
+                <div className="admin-decision-card">
+                  <h4>Last 7 days</h4>
+                  <p>Review volume and bad flags — rising red means act this week.</p>
+                  {trend.length === 0 ? (
+                    <p className="admin-muted">No recent trend data.</p>
+                  ) : (
+                    <ul className="admin-action-list">
+                      {trend.map((t) => {
+                        const avg = t.avg_overall_rating ?? t.avg_hospital_rating ?? 0;
+                        return (
+                          <li key={t.date}>
+                            <strong>{t.date}</strong>: {t.reviews || 0} reviews · avg {avg}★
+                            {(t.bad_reviews || 0) > 0 ? ` · ${t.bad_reviews} bad` : ''}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               </div>
 
@@ -2173,16 +2130,19 @@ export default function AdminModule() {
       {/* ========================================================== */}
       {/* TAB 6: HOSPITAL ANALYTICS (live roster + OPD + partners)    */}
       {/* ========================================================== */}
-      {activeAdminTab === 'analytics' && (
-        <div className="card" style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+      {activeAdminTab === 'analytics' && (() => {
+        const triage = hospitalInsights?.opd_today?.triage || {};
+        const tokenTotal = Math.max(1, hospitalInsights?.opd_today?.tokens || 0);
+        const deptRows = hospitalInsights?.opd_today?.by_department || [];
+        const maxDept = Math.max(1, ...deptRows.map((d) => d.count || 0));
+        const staffRows = hospitalInsights?.doctors?.staffing_by_department || [];
+        const maxStaff = Math.max(1, ...staffRows.map((d) => d.total || 0));
+        return (
+        <div className="card admin-plain-analytics" style={{ padding: '22px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Activity size={22} style={{ color: '#0f766e' }} />
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Hospital Analytics & Footfall</h3>
-              </div>
-              <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.86rem' }}>
-                Live staffing, today&apos;s OPD triage, beds, and partner pipeline — not static preview text.
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem', lineHeight: 1.45, maxWidth: 640 }}>
+                Simple numbers for decisions: how busy OPD is today, which departments need staff, bed pressure, and open partner work.
               </p>
             </div>
             <button type="button" className="btn btn-outline" onClick={fetchHospitalInsights} disabled={loadingHospitalInsights}>
@@ -2191,102 +2151,112 @@ export default function AdminModule() {
           </div>
 
           {loadingHospitalInsights && !hospitalInsights ? (
-            <p style={{ color: '#64748b' }}>Loading hospital analytics…</p>
+            <p style={{ color: '#64748b' }}>Loading…</p>
           ) : !hospitalInsights ? (
-            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 28, textAlign: 'center', color: '#64748b' }}>
-              No analytics yet. Sign in as admin and refresh.
-            </div>
+            <div className="admin-empty-hint">No data yet. Sign in as admin and refresh.</div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
-                <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0f766e' }}>DOCTORS</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.doctors?.total || 0}</div>
+              <div className="admin-kpi-row">
+                <div className="admin-kpi-card">
+                  <span>Doctors on roster</span>
+                  <strong>{hospitalInsights.doctors?.total || 0}</strong>
+                  <em>Available to assign OPD</em>
                 </div>
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8' }}>TOKENS TODAY</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.tokens || 0}</div>
+                <div className="admin-kpi-card">
+                  <span>OPD tokens today</span>
+                  <strong>{hospitalInsights.opd_today?.tokens || 0}</strong>
+                  <em>Patient footfall today</em>
                 </div>
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#b91c1c' }}>RED</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.RED || 0}</div>
+                <div className="admin-kpi-card admin-kpi-warn">
+                  <span>Emergency (RED)</span>
+                  <strong>{triage.RED || 0}</strong>
+                  <em>Need senior chambers first</em>
                 </div>
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#b45309' }}>AMBER</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.AMBER || 0}</div>
-                </div>
-                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#15803d' }}>GREEN</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.GREEN || 0}</div>
-                </div>
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12 }}>
-                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b' }}>BED OCC.</div>
-                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.beds?.occupancy_pct || 0}%</div>
+                <div className="admin-kpi-card">
+                  <span>Beds free</span>
+                  <strong>{hospitalInsights.beds?.available_beds || 0}</strong>
+                  <em>{hospitalInsights.beds?.occupancy_pct || 0}% occupied overall</em>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>Department staffing (roster)</strong>
-                  {(hospitalInsights.doctors?.staffing_by_department || []).length === 0 ? (
-                    <p style={{ color: '#64748b', fontSize: 13 }}>No doctors in roster for this hospital.</p>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflow: 'auto' }}>
-                      {hospitalInsights.doctors.staffing_by_department.map((row) => (
-                        <div key={row.department} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
-                          <span>{row.department}</span>
-                          <strong>{row.total} · {row.senior} SR / {row.junior} JR</strong>
-                        </div>
-                      ))}
+              <div className="admin-decision-grid">
+                <div className="admin-decision-card">
+                  <h4>Triage mix today</h4>
+                  <p>Share of today’s tokens by urgency — use this to open extra senior desks if RED/AMBER rise.</p>
+                  {[
+                    { key: 'RED', label: 'Emergency', color: '#dc2626', n: triage.RED || 0 },
+                    { key: 'AMBER', label: 'Urgent', color: '#d97706', n: triage.AMBER || 0 },
+                    { key: 'GREEN', label: 'Routine', color: '#059669', n: triage.GREEN || 0 },
+                  ].map((row) => (
+                    <div key={row.key} className="admin-bar-row">
+                      <div className="admin-bar-meta">
+                        <span>{row.label}</span>
+                        <strong>{row.n} ({Math.round((row.n / tokenTotal) * 100)}%)</strong>
+                      </div>
+                      <div className="admin-bar-track">
+                        <div className="admin-bar-fill" style={{ width: `${(row.n / tokenTotal) * 100}%`, background: row.color }} />
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
 
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>OPD footfall by department (today)</strong>
-                  {(hospitalInsights.opd_today?.by_department || []).length === 0 ? (
-                    <p style={{ color: '#64748b', fontSize: 13 }}>No tokens issued today yet.</p>
-                  ) : (
-                    <div style={{ height: 240 }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={hospitalInsights.opd_today.by_department}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                          <XAxis dataKey="department" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
-                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                          <Tooltip />
-                          <Bar dataKey="count" fill="#0f766e" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
+                <div className="admin-decision-card">
+                  <h4>Busiest departments today</h4>
+                  <p>Where patients are landing — reinforce these OPDs first.</p>
+                  {deptRows.length === 0 ? (
+                    <p className="admin-muted">No tokens today yet.</p>
+                  ) : deptRows.slice(0, 8).map((row) => (
+                    <div key={row.department} className="admin-bar-row">
+                      <div className="admin-bar-meta">
+                        <span>{row.department}</span>
+                        <strong>{row.count}</strong>
+                      </div>
+                      <div className="admin-bar-track">
+                        <div className="admin-bar-fill" style={{ width: `${(row.count / maxDept) * 100}%`, background: '#2563eb' }} />
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
 
-                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>Partner pipeline</strong>
-                  <div style={{ fontSize: 13, lineHeight: 1.7, color: '#334155' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Open volunteer requisitions</span>
-                      <strong>{hospitalInsights.partners?.open_volunteer_requisitions || 0}</strong>
+                <div className="admin-decision-card">
+                  <h4>Staff by department</h4>
+                  <p>How many doctors you already have posted (SR / JR).</p>
+                  {staffRows.length === 0 ? (
+                    <p className="admin-muted">No roster data.</p>
+                  ) : staffRows.slice(0, 10).map((row) => (
+                    <div key={row.department} className="admin-bar-row">
+                      <div className="admin-bar-meta">
+                        <span>{row.department}</span>
+                        <strong>{row.total} <em style={{ fontStyle: 'normal', fontWeight: 600, color: '#64748b' }}>({row.senior} SR · {row.junior} JR)</em></strong>
+                      </div>
+                      <div className="admin-bar-track">
+                        <div className="admin-bar-fill" style={{ width: `${(row.total / maxStaff) * 100}%`, background: '#0f766e' }} />
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Pending NGO applications</span>
-                      <strong>{hospitalInsights.partners?.pending_volunteer_applications || 0}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>Open / pledged CSR lists</span>
-                      <strong>{hospitalInsights.partners?.open_csr_requirements || 0}</strong>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
-                      <span>Beds available</span>
-                      <strong>{hospitalInsights.beds?.available_beds || 0} / {hospitalInsights.beds?.total_beds || 0}</strong>
-                    </div>
-                  </div>
+                  ))}
+                </div>
+
+                <div className="admin-decision-card">
+                  <h4>Action checklist</h4>
+                  <p>Quick partner / ward signals — no charts needed.</p>
+                  <ul className="admin-action-list">
+                    <li><strong>{hospitalInsights.partners?.pending_volunteer_applications || 0}</strong> NGO applications waiting for Accept / Reject</li>
+                    <li><strong>{hospitalInsights.partners?.open_volunteer_requisitions || 0}</strong> volunteer openings still public</li>
+                    <li><strong>{hospitalInsights.partners?.open_csr_requirements || 0}</strong> CSR lists open or pledged</li>
+                    <li><strong>{hospitalInsights.beds?.available_beds || 0}</strong> beds free of <strong>{hospitalInsights.beds?.total_beds || 0}</strong> total</li>
+                    <li>
+                      {(triage.RED || 0) >= 3
+                        ? 'RED load is elevated — prefer senior chambers for new RED tokens.'
+                        : 'RED load looks manageable right now.'}
+                    </li>
+                  </ul>
                 </div>
               </div>
             </>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================== */}
       {/* TAB 7: AUDIT LOGS (hospital_events + sessions)             */}
