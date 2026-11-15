@@ -156,6 +156,15 @@ export default function AdminModule() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [analyticsDeptFilter, setAnalyticsDeptFilter] = useState('ALL');
 
+  // Live beds / hospital analytics / audit (Phase 2 — no fake UI data)
+  const [bedData, setBedData] = useState(null);
+  const [loadingBeds, setLoadingBeds] = useState(false);
+  const [hospitalInsights, setHospitalInsights] = useState(null);
+  const [loadingHospitalInsights, setLoadingHospitalInsights] = useState(false);
+  const [auditData, setAuditData] = useState(null);
+  const [loadingAudit, setLoadingAudit] = useState(false);
+  const [auditEventFilter, setAuditEventFilter] = useState('ALL');
+
   const isAdmin = isAuthenticated && user?.role === 'admin';
 
   const showAlert = (msg, type = 'success') => {
@@ -238,6 +247,62 @@ export default function AdminModule() {
     }
   };
 
+  const fetchBedInventory = async () => {
+    setLoadingBeds(true);
+    try {
+      const res = await api.get('/admin/beds', { params: { hospital_id: OPERATIONAL_HOSPITAL_ID } });
+      setBedData(res.data?.data || null);
+    } catch (err) {
+      setBedData(null);
+      showAlert(err.response?.data?.detail || 'Failed to load bed inventory.', 'error');
+    } finally {
+      setLoadingBeds(false);
+    }
+  };
+
+  const updateWardOccupancy = async (wardId, occupied, total) => {
+    try {
+      await api.patch(`/admin/beds/${wardId}`, {
+        occupied_beds: Number(occupied),
+        total_beds: Number(total),
+      }, { params: { hospital_id: OPERATIONAL_HOSPITAL_ID } });
+      showAlert(`Updated ${wardId} occupancy.`);
+      fetchBedInventory();
+    } catch (err) {
+      showAlert(err.response?.data?.detail || 'Could not update ward beds.', 'error');
+    }
+  };
+
+  const fetchHospitalInsights = async () => {
+    setLoadingHospitalInsights(true);
+    try {
+      const res = await api.get('/admin/hospital-analytics', {
+        params: { hospital_id: OPERATIONAL_HOSPITAL_ID },
+      });
+      setHospitalInsights(res.data?.data || null);
+    } catch (err) {
+      setHospitalInsights(null);
+      showAlert(err.response?.data?.detail || 'Failed to load hospital analytics.', 'error');
+    } finally {
+      setLoadingHospitalInsights(false);
+    }
+  };
+
+  const fetchAuditLogs = async (eventType = auditEventFilter) => {
+    setLoadingAudit(true);
+    try {
+      const params = { hospital_id: OPERATIONAL_HOSPITAL_ID, limit: 100 };
+      if (eventType && eventType !== 'ALL') params.event_type = eventType;
+      const res = await api.get('/admin/audit-logs', { params });
+      setAuditData(res.data?.data || null);
+    } catch (err) {
+      setAuditData(null);
+      showAlert(err.response?.data?.detail || 'Failed to load audit logs.', 'error');
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
   // Load OPD Token Analytics & Monitoring
   const fetchTokenAnalytics = async () => {
     setLoadingAnalytics(true);
@@ -293,6 +358,12 @@ export default function AdminModule() {
         fetchVolunteerData();
       } else if (activeAdminTab === 'csr') {
         fetchCsrData();
+      } else if (activeAdminTab === 'beds') {
+        fetchBedInventory();
+      } else if (activeAdminTab === 'analytics') {
+        fetchHospitalInsights();
+      } else if (activeAdminTab === 'audit') {
+        fetchAuditLogs();
       }
     }
   });
@@ -339,6 +410,12 @@ export default function AdminModule() {
         fetchTokenAnalytics();
       } else if (activeAdminTab === 'reviews') {
         fetchReviewAnalytics();
+      } else if (activeAdminTab === 'beds') {
+        fetchBedInventory();
+      } else if (activeAdminTab === 'analytics') {
+        fetchHospitalInsights();
+      } else if (activeAdminTab === 'audit') {
+        fetchAuditLogs();
       }
     }
   }, [isAdmin, activeAdminTab, filterDept, filterTier, filterEmployment, filterStatus, searchTerm, timeframeFilter, selectedDate, selectedMonth, analyticsDeptFilter]);
@@ -746,7 +823,7 @@ export default function AdminModule() {
         >
           <Bed size={16} />
           <span>Bed Allocation & Wards</span>
-          <span className="tab-status-chip chip-preview">Option</span>
+          <span className="tab-status-chip chip-active">Live</span>
         </button>
 
         <button
@@ -769,7 +846,7 @@ export default function AdminModule() {
         >
           <BarChart3 size={16} />
           <span>Hospital Analytics & Footfall</span>
-          <span className="tab-status-chip chip-preview">Analytics Option</span>
+          <span className="tab-status-chip chip-active">Live</span>
         </button>
 
         <button
@@ -779,7 +856,7 @@ export default function AdminModule() {
         >
           <ShieldAlert size={16} />
           <span>Audit Logs & Security</span>
-          <span className="tab-status-chip chip-preview">Option</span>
+          <span className="tab-status-chip chip-active">Live</span>
         </button>
       </div>
 
@@ -1242,40 +1319,62 @@ export default function AdminModule() {
                           {app.status}
                         </span>
                       </div>
-                      {app.status === 'PENDING' && (
+                      {(app.status === 'PENDING' || app.status === 'ACCEPTED') && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            className="btn btn-primary"
-                            style={{ fontSize: '0.78rem', background: '#059669', borderColor: '#059669' }}
-                            onClick={async () => {
-                              try {
-                                await api.patch(`/admin/volunteers/applications/${app.application_id}/status`, { status: 'ACCEPTED' });
-                                showAlert(`Accepted ${app.application_id}`);
-                                fetchVolunteerData();
-                              } catch (err) {
-                                showAlert(err.response?.data?.detail || 'Update failed', 'error');
-                              }
-                            }}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline"
-                            style={{ fontSize: '0.78rem' }}
-                            onClick={async () => {
-                              try {
-                                await api.patch(`/admin/volunteers/applications/${app.application_id}/status`, { status: 'REJECTED' });
-                                showAlert(`Rejected ${app.application_id}`);
-                                fetchVolunteerData();
-                              } catch (err) {
-                                showAlert(err.response?.data?.detail || 'Update failed', 'error');
-                              }
-                            }}
-                          >
-                            Reject
-                          </button>
+                          {app.status === 'PENDING' && (
+                            <>
+                              <button
+                                type="button"
+                                className="btn btn-primary"
+                                style={{ fontSize: '0.78rem', background: '#059669', borderColor: '#059669' }}
+                                onClick={async () => {
+                                  try {
+                                    await api.patch(`/admin/volunteers/applications/${app.application_id}/status`, { status: 'ACCEPTED' });
+                                    showAlert(`Accepted ${app.application_id}`);
+                                    fetchVolunteerData();
+                                  } catch (err) {
+                                    showAlert(err.response?.data?.detail || 'Update failed', 'error');
+                                  }
+                                }}
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-outline"
+                                style={{ fontSize: '0.78rem' }}
+                                onClick={async () => {
+                                  try {
+                                    await api.patch(`/admin/volunteers/applications/${app.application_id}/status`, { status: 'REJECTED' });
+                                    showAlert(`Rejected ${app.application_id}`);
+                                    fetchVolunteerData();
+                                  } catch (err) {
+                                    showAlert(err.response?.data?.detail || 'Update failed', 'error');
+                                  }
+                                }}
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {app.status === 'ACCEPTED' && (
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              style={{ fontSize: '0.78rem', background: '#1d4ed8', borderColor: '#1d4ed8' }}
+                              onClick={async () => {
+                                try {
+                                  await api.patch(`/admin/volunteers/applications/${app.application_id}/status`, { status: 'DEPLOYED' });
+                                  showAlert(`Deployed ${app.application_id} on site`);
+                                  fetchVolunteerData();
+                                } catch (err) {
+                                  showAlert(err.response?.data?.detail || 'Update failed', 'error');
+                                }
+                              }}
+                            >
+                              Mark deployed
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1738,34 +1837,110 @@ export default function AdminModule() {
       )}
 
       {/* ========================================================== */}
-      {/* TAB 5: BED ALLOCATION & WARDS                              */}
+      {/* TAB 5: BED ALLOCATION & WARDS (live Mongo ward_beds)         */}
       {/* ========================================================== */}
       {activeAdminTab === 'beds' && (
-        <div className="card" style={{ padding: '30px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-            <Bed size={24} style={{ color: '#16a34a' }} />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Bed Allocation & Ward Inventory Matrix</h3>
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Bed size={22} style={{ color: '#16a34a' }} />
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Bed Allocation & Wards</h3>
+              </div>
+              <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                {bedData?.hospital_name || 'Victoria Hospital'} · live occupancy from ward inventory
+              </p>
+            </div>
+            <button type="button" className="btn btn-outline" onClick={fetchBedInventory} disabled={loadingBeds}>
+              <RefreshCw size={14} className={loadingBeds ? 'spin' : ''} /> Refresh
+            </button>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '20px' }}>
-            Real-time visual bed telemetry for General Medical Wards, ICU, Surgical recovery, and Emergency observation.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '16px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#047857' }}>GENERAL WARDS</span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#065f46', marginTop: '4px' }}>180 / 220</h3>
-              <span style={{ fontSize: '0.74rem', color: '#047857' }}>40 Beds Available</span>
+
+          {loadingBeds && !bedData ? (
+            <p style={{ color: '#64748b' }}>Loading ward beds…</p>
+          ) : !bedData ? (
+            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 28, textAlign: 'center', color: '#64748b' }}>
+              No ward inventory yet. Restart API to seed defaults, then refresh.
             </div>
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '16px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#b91c1c' }}>ICU CRITICAL BEDS</span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#991b1b', marginTop: '4px' }}>22 / 24</h3>
-              <span style={{ fontSize: '0.74rem', color: '#b91c1c' }}>2 Beds Available</span>
-            </div>
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: '16px', borderRadius: '8px' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#1d4ed8' }}>EMERGENCY TRIAGE BEDS</span>
-              <h3 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e40af', marginTop: '4px' }}>8 / 15</h3>
-              <span style={{ fontSize: '0.74rem', color: '#1d4ed8' }}>7 Beds Available</span>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#15803d' }}>TOTAL BEDS</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#166534' }}>{bedData.total_beds}</div>
+                </div>
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#c2410c' }}>OCCUPIED</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#9a3412' }}>{bedData.occupied_beds}</div>
+                </div>
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8' }}>AVAILABLE</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#1e40af' }}>{bedData.available_beds}</div>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b' }}>OCCUPANCY</div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{bedData.occupancy_pct}%</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(bedData.wards || []).map((w) => {
+                  const pressureColor = w.pressure === 'critical' ? '#b91c1c' : w.pressure === 'high' ? '#b45309' : '#15803d';
+                  const pressureBg = w.pressure === 'critical' ? '#fef2f2' : w.pressure === 'high' ? '#fffbeb' : '#ecfdf5';
+                  return (
+                    <div key={w.ward_id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14, background: '#fff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                        <div>
+                          <strong style={{ fontSize: '0.95rem' }}>{w.ward_name}</strong>
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            {w.ward_id} · {w.ward_type} · {w.occupied_beds}/{w.total_beds} occupied · {w.available_beds} free
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 11, fontWeight: 800, padding: '4px 8px', borderRadius: 999, background: pressureBg, color: pressureColor, textTransform: 'uppercase' }}>
+                          {w.pressure} · {w.occupancy_pct}%
+                        </span>
+                      </div>
+                      <div style={{ marginTop: 10, height: 8, background: '#f1f5f9', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.min(100, w.occupancy_pct || 0)}%`, height: '100%', background: pressureColor }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Occupied</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={w.total_beds}
+                          defaultValue={w.occupied_beds}
+                          id={`occ-${w.ward_id}`}
+                          style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid #cbd5e1' }}
+                        />
+                        <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Total</label>
+                        <input
+                          type="number"
+                          min={1}
+                          defaultValue={w.total_beds}
+                          id={`tot-${w.ward_id}`}
+                          style={{ width: 80, padding: '6px 8px', borderRadius: 8, border: '1px solid #cbd5e1' }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ fontSize: 12, padding: '6px 12px' }}
+                          onClick={() => {
+                            const occ = document.getElementById(`occ-${w.ward_id}`)?.value;
+                            const tot = document.getElementById(`tot-${w.ward_id}`)?.value;
+                            updateWardOccupancy(w.ward_id, occ, tot);
+                          }}
+                        >
+                          Save
+                        </button>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>Updated {formatUtcDateTime(w.updated_at)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -2033,74 +2208,206 @@ export default function AdminModule() {
       })()}
 
       {/* ========================================================== */}
-      {/* TAB 6: HOSPITAL ANALYTICS                                  */}
+      {/* TAB 6: HOSPITAL ANALYTICS (live roster + OPD + partners)    */}
       {/* ========================================================== */}
       {activeAdminTab === 'analytics' && (
-        <div className="card" style={{ padding: '30px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-            <BarChart3 size={24} style={{ color: '#7c3aed' }} />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Hospital Operational Analytics & Footfall Insights</h3>
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Activity size={22} style={{ color: '#0f766e' }} />
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Hospital Analytics & Footfall</h3>
+              </div>
+              <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                Live staffing, today&apos;s OPD triage, beds, and partner pipeline — not static preview text.
+              </p>
+            </div>
+            <button type="button" className="btn btn-outline" onClick={fetchHospitalInsights} disabled={loadingHospitalInsights}>
+              <RefreshCw size={14} className={loadingHospitalInsights ? 'spin' : ''} /> Refresh
+            </button>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '24px' }}>
-            Evidence-based hospital administrative metrics for resource planning, doctor utilization, and peak-hour patient load mitigation.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                Department Staffing Distribution
-              </span>
-              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.84rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>General Medicine:</span>
-                  <strong>5 Doctors (2 SR, 3 JR)</strong>
+
+          {loadingHospitalInsights && !hospitalInsights ? (
+            <p style={{ color: '#64748b' }}>Loading hospital analytics…</p>
+          ) : !hospitalInsights ? (
+            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 12, padding: 28, textAlign: 'center', color: '#64748b' }}>
+              No analytics yet. Sign in as admin and refresh.
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+                <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#0f766e' }}>DOCTORS</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.doctors?.total || 0}</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Orthopedics:</span>
-                  <strong>5 Doctors (2 SR, 3 JR)</strong>
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#1d4ed8' }}>TOKENS TODAY</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.tokens || 0}</div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Cardiology:</span>
-                  <strong>4 Doctors (2 SR, 2 JR)</strong>
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#b91c1c' }}>RED</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.RED || 0}</div>
+                </div>
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#b45309' }}>AMBER</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.AMBER || 0}</div>
+                </div>
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#15803d' }}>GREEN</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.opd_today?.triage?.GREEN || 0}</div>
+                </div>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#64748b' }}>BED OCC.</div>
+                  <div style={{ fontSize: 22, fontWeight: 900 }}>{hospitalInsights.beds?.occupancy_pct || 0}%</div>
                 </div>
               </div>
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                Triage Severity Tier Allocation
-              </span>
-              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.84rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b91c1c' }}>
-                  <span>Tier 1 — RED (Emergency):</span>
-                  <strong>Senior Doctor Chambers</strong>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>Department staffing (roster)</strong>
+                  {(hospitalInsights.doctors?.staffing_by_department || []).length === 0 ? (
+                    <p style={{ color: '#64748b', fontSize: 13 }}>No doctors in roster for this hospital.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 280, overflow: 'auto' }}>
+                      {hospitalInsights.doctors.staffing_by_department.map((row) => (
+                        <div key={row.department} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13, borderTop: '1px solid #f1f5f9', paddingTop: 6 }}>
+                          <span>{row.department}</span>
+                          <strong>{row.total} · {row.senior} SR / {row.junior} JR</strong>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#b45309' }}>
-                  <span>Tier 2 — AMBER (Urgent):</span>
-                  <strong>Balanced Priority Desk</strong>
+
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>OPD footfall by department (today)</strong>
+                  {(hospitalInsights.opd_today?.by_department || []).length === 0 ? (
+                    <p style={{ color: '#64748b', fontSize: 13 }}>No tokens issued today yet.</p>
+                  ) : (
+                    <div style={{ height: 240 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={hospitalInsights.opd_today.by_department}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="department" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+                          <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                          <Tooltip />
+                          <Bar dataKey="count" fill="#0f766e" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803d' }}>
-                  <span>Tier 3 — GREEN (Routine OPD):</span>
-                  <strong>Junior Resident Desks</strong>
+
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
+                  <strong style={{ display: 'block', marginBottom: 10, fontSize: 13 }}>Partner pipeline</strong>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Open volunteer requisitions</span>
+                      <strong>{hospitalInsights.partners?.open_volunteer_requisitions || 0}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Pending NGO applications</span>
+                      <strong>{hospitalInsights.partners?.pending_volunteer_applications || 0}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Open / pledged CSR lists</span>
+                      <strong>{hospitalInsights.partners?.open_csr_requirements || 0}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+                      <span>Beds available</span>
+                      <strong>{hospitalInsights.beds?.available_beds || 0} / {hospitalInsights.beds?.total_beds || 0}</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       )}
 
       {/* ========================================================== */}
-      {/* TAB 7: AUDIT LOGS                                          */}
+      {/* TAB 7: AUDIT LOGS (hospital_events + sessions)             */}
       {/* ========================================================== */}
       {activeAdminTab === 'audit' && (
-        <div className="card" style={{ padding: '30px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-            <ShieldCheck size={24} style={{ color: '#0369a1' }} />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Audit Logs & Access Control Matrix</h3>
+        <div className="card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShieldCheck size={22} style={{ color: '#0369a1' }} />
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800 }}>Audit Logs & Security</h3>
+              </div>
+              <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.86rem' }}>
+                Live `hospital_events` stream + recent login sessions — not fabricated log lines.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <select
+                value={auditEventFilter}
+                onChange={(e) => {
+                  setAuditEventFilter(e.target.value);
+                  fetchAuditLogs(e.target.value);
+                }}
+                className="filter-select"
+                style={{ minWidth: 180 }}
+              >
+                <option value="ALL">All event types</option>
+                {(auditData?.event_types || []).map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <button type="button" className="btn btn-outline" onClick={() => fetchAuditLogs()} disabled={loadingAudit}>
+                <RefreshCw size={14} className={loadingAudit ? 'spin' : ''} /> Refresh
+              </button>
+            </div>
           </div>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', fontSize: '0.82rem', fontFamily: 'monospace', color: '#334155' }}>
-            <div>[LOG-001] {new Date().toISOString()} • Administrator login verified: admin@sushrutha.gov.in (RBAC: admin)</div>
-            <div>[LOG-002] Doctor roster verified • 43 medical officers synchronized across 12 OPD chambers.</div>
-            <div>[LOG-003] MongoDB replica status: HEALTHY • Database 'sushrutha_grid' connected.</div>
-          </div>
+
+          {loadingAudit && !auditData ? (
+            <p style={{ color: '#64748b' }}>Loading audit trail…</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(260px, 1fr)', gap: 14 }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontSize: 13 }}>
+                  Hospital events ({auditData?.total || 0})
+                </div>
+                {(auditData?.events || []).length === 0 ? (
+                  <div style={{ padding: 24, color: '#64748b', fontSize: 13 }}>No events yet for this hospital.</div>
+                ) : (
+                  <div style={{ maxHeight: 420, overflow: 'auto' }}>
+                    {(auditData.events || []).map((ev) => (
+                      <div key={ev.id} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                          <strong style={{ color: '#0f172a' }}>{ev.event_type}</strong>
+                          <span style={{ color: '#64748b' }}>{formatUtcDateTime(ev.timestamp)}</span>
+                        </div>
+                        <div style={{ color: '#475569', marginTop: 4, lineHeight: 1.4 }}>{ev.summary}</div>
+                        {ev.actor && <div style={{ color: '#94a3b8', marginTop: 2 }}>Actor: {ev.actor}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontWeight: 800, fontSize: 13 }}>
+                  Recent sessions
+                </div>
+                {(auditData?.recent_sessions || []).length === 0 ? (
+                  <div style={{ padding: 24, color: '#64748b', fontSize: 13 }}>No session records.</div>
+                ) : (
+                  <div style={{ maxHeight: 420, overflow: 'auto' }}>
+                    {(auditData.recent_sessions || []).map((s) => (
+                      <div key={s.session_id || `${s.email}-${s.login_at}`} style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: 12 }}>
+                        <strong>{s.name || s.email}</strong>
+                        <div style={{ color: '#64748b' }}>{s.role} · {s.email}</div>
+                        <div style={{ color: '#94a3b8', marginTop: 2 }}>Login {formatUtcDateTime(s.login_at)}</div>
+                        {s.ip_address && <div style={{ color: '#94a3b8' }}>IP {s.ip_address}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

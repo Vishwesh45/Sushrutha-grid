@@ -20,11 +20,11 @@ This workspace is `C:\vishwesh\sushrutha - Copy`. A sibling copy at `C:\vishwesh
 
 ## Not built, or only a preview
 
-- No SMS/WhatsApp, APScheduler reminders, grievance tickets, or feedback ratings.
-- No nurse ward, e-MAR, or shift handover. `nurse`, `volunteer`, and `csr` exist as role labels only. Live accounts are patient, doctor, and admin.
-- Bed tab and Hospital Analytics tab and Audit Logs tab are static preview text. The bed counts are hardcoded. Audit lines are not read from the database.
-- No prescription QR, no gate QR, no prescription OCR, no template NLG, no trained waiting-time or demand-forecast model. Timestamps in `hospital_events` are the dataset groundwork only.
+- No SMS/WhatsApp, APScheduler reminders, or grievance tickets. Visit ratings/reviews are live.
+- No nurse ward, e-MAR, or shift handover. `nurse` is a role label only. `volunteer` and `csr` have org portals + admin ops (RBAC locked).
+- Beds / Hospital Analytics / Audit admin tabs are **live** (`ward_beds`, roster+OPD aggregates, `hospital_events` + sessions) — not static preview.
+- No prescription QR, no gate QR, no prescription OCR, no template NLG, no trained waiting-time or demand-forecast model.
 - Department routing lives inside the NLP service. There is no separate decision-engine module. Psychiatry is not a routed department. Doctor roster departments are Cardiology, Dermatology, ENT, Endocrinology, Gastroenterology, General Medicine, Neurology, Obstetrics & Gynecology, Ophthalmology, Orthopedics, Pulmonology, and Urology.
-- Volunteer and CSR admin routes are not locked with `require_roles`. Live CSR and volunteer collections were empty at last check.
+- Multi-hospital digital OPD still Victoria-centric for queue/check-in; nearby search lists more hospitals.
 
 Do not treat the old "~82% / React 18 / port 8000 / QR on the slip / 6 enforced roles" status note as current fact. Re-check the code before claiming a feature is live.

@@ -127,6 +127,18 @@ def apply_for_volunteer_requisition(
         {"$inc": {"applications_count": 1}, "$set": {"updated_at": now}},
     )
     doc.pop("_id", None)
+    try:
+        db.hospital_events.insert_one({
+            "event_type": "VOLUNTEER_APPLICATION_SUBMITTED",
+            "hospital_id": hid,
+            "application_id": app_id,
+            "requisition_id": payload.requisition_id.strip(),
+            "ngo_name": doc["ngo_name"],
+            "status": "PENDING",
+            "timestamp": now,
+        })
+    except Exception:
+        pass
 
     broadcast_event("VOLUNTEER_APPLICATION_SUBMITTED", {
         "hospital_id": hid,

@@ -17,6 +17,7 @@ from app.routes.hospitals import router as hospitals_router
 from app.routes.reception import router as reception_router
 from app.routes.reviews import router as reviews_router
 from app.routes.followups import router as followups_router
+from app.routes.admin_insights import router as admin_insights_router
 
 app = FastAPI(
     title="Sushrutha Grid API",
@@ -49,6 +50,16 @@ app.include_router(hospitals_router)
 app.include_router(reception_router)
 app.include_router(reviews_router)
 app.include_router(followups_router)
+app.include_router(admin_insights_router)
+
+@app.on_event("startup")
+def seed_ward_beds():
+    """Ensure Victoria ward bed inventory exists for live admin Beds tab."""
+    try:
+        from app.services.bed_service import ensure_default_wards
+        ensure_default_wards()
+    except Exception as e:
+        print(f"Warning: Ward bed seeding skipped: {e}")
 
 @app.on_event("startup")
 def start_followup_reminder_poller():
