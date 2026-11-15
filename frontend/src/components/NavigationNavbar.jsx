@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useShellMenu } from '../context/ShellMenuContext';
 import UnifiedAuthModal from './UnifiedAuthModal';
 import { useHospitalWebSocket } from '../services/useHospitalWebSocket';
-import { toolLinksForRole, homePathForRole } from '../utils/sessionRoutes';
+import { toolLinksForRole } from '../utils/sessionRoutes';
 
 const ICONS = {
   home: Home,
@@ -119,7 +119,17 @@ export default function NavigationNavbar() {
           </button>
         )}
 
-        <Link to={isAuthenticated ? homePathForRole(role) : '/'} className="navbar-brand" onClick={closeDrawer}>
+        <Link
+          to="/"
+          className="navbar-brand"
+          onClick={(e) => {
+            closeDrawer();
+            if (location.pathname === '/') {
+              e.preventDefault();
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}
+        >
           <div className="brand-icon">+</div>
           <div>
             <div className="brand-title">Sushrutha Grid</div>
