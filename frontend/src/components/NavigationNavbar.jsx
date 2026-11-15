@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, Stethoscope, FileText, ShieldAlert, Database, Tv, KeyRound,
@@ -182,117 +183,124 @@ export default function NavigationNavbar() {
         </div>
       </div>
 
-      {/* One coordinated left drawer for the whole site */}
-      <div
-        className={`shell-drawer-backdrop ${mobileOpen ? 'is-open' : ''}`}
-        onClick={closeDrawer}
-        aria-hidden={!mobileOpen}
-      />
-      <aside
-        id="shell-drawer"
-        className={`shell-drawer ${mobileOpen ? 'is-open' : ''}`}
-        aria-hidden={!mobileOpen}
-        aria-label="Site menu"
-      >
-        <div className="shell-drawer-head">
-          <div>
-            <strong>{pageMenu?.title || (isAuthenticated ? 'Menu' : 'Explore')}</strong>
-            <span>{user?.name || 'Sushrutha Grid'}</span>
-          </div>
-          <button type="button" className="shell-drawer-close" aria-label="Close menu" onClick={closeDrawer}>
-            <X size={18} />
-          </button>
-        </div>
+      {/* Portal to body — sticky navbar + backdrop-filter break position:fixed children */}
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <button
+            type="button"
+            className={`shell-drawer-backdrop ${mobileOpen ? 'is-open' : ''}`}
+            onClick={closeDrawer}
+            aria-label="Close menu"
+            tabIndex={mobileOpen ? 0 : -1}
+          />
+          <aside
+            id="shell-drawer"
+            className={`shell-drawer ${mobileOpen ? 'is-open' : ''}`}
+            aria-hidden={!mobileOpen}
+            aria-label="Site menu"
+          >
+            <div className="shell-drawer-head">
+              <div>
+                <strong>{pageMenu?.title || (isAuthenticated ? 'Menu' : 'Explore')}</strong>
+                <span>{user?.name || 'Sushrutha Grid'}</span>
+              </div>
+              <button type="button" className="shell-drawer-close" aria-label="Close menu" onClick={closeDrawer}>
+                <X size={18} />
+              </button>
+            </div>
 
-        <div className="shell-drawer-body">
-          {pageMenu?.groups?.length > 0 && (
-            <div className="shell-drawer-block">
-              <div className="shell-drawer-label">On this page</div>
-              {pageMenu.groups.map((group) => (
-                <div key={group.label} className="shell-drawer-group">
-                  <div className="shell-drawer-group-label">{group.label}</div>
-                  {group.items.map((item) => {
-                    const Icon = item.Icon || Home;
+            <div className="shell-drawer-body">
+              {pageMenu?.groups?.length > 0 && (
+                <div className="shell-drawer-block">
+                  <div className="shell-drawer-label">On this page</div>
+                  {pageMenu.groups.map((group) => (
+                    <div key={group.label} className="shell-drawer-group">
+                      <div className="shell-drawer-group-label">{group.label}</div>
+                      {group.items.map((item) => {
+                        const Icon = item.Icon || Home;
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className={`shell-drawer-link ${item.active ? 'active' : ''}`}
+                            onClick={() => {
+                              item.onSelect?.();
+                              closeDrawer();
+                            }}
+                          >
+                            <Icon size={17} />
+                            <span>{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {toolLinks.length > 0 && (
+                <div className="shell-drawer-block">
+                  <div className="shell-drawer-label">{pageMenu ? 'More tools' : 'Go to'}</div>
+                  {toolLinks.map((link) => {
+                    const Icon = ICONS[link.icon] || Home;
                     return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`shell-drawer-link ${item.active ? 'active' : ''}`}
-                        onClick={() => {
-                          item.onSelect?.();
-                          closeDrawer();
-                        }}
+                      <NavLink
+                        key={link.path}
+                        to={link.path}
+                        className={({ isActive }) => `shell-drawer-link ${isActive ? 'active' : ''}`}
+                        onClick={closeDrawer}
                       >
                         <Icon size={17} />
-                        <span>{item.label}</span>
-                      </button>
+                        <span>{link.name}</span>
+                      </NavLink>
                     );
                   })}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {toolLinks.length > 0 && (
-            <div className="shell-drawer-block">
-              <div className="shell-drawer-label">{pageMenu ? 'More tools' : 'Go to'}</div>
-              {toolLinks.map((link) => {
-                const Icon = ICONS[link.icon] || Home;
-                return (
-                  <NavLink
-                    key={link.path}
-                    to={link.path}
-                    className={({ isActive }) => `shell-drawer-link ${isActive ? 'active' : ''}`}
-                    onClick={closeDrawer}
+              <div className="shell-drawer-block shell-drawer-account">
+                <div className="shell-drawer-label">Account</div>
+                {isAuthenticated ? (
+                  <>
+                    <div className="shell-drawer-user">
+                      <div className="navbar-avatar-btn" aria-hidden="true">
+                        {(user?.name || 'U').slice(0, 1).toUpperCase()}
+                      </div>
+                      <div>
+                        <strong>{user?.name || user?.username}</strong>
+                        <span className={`role-pill role-${user?.role || 'guest'}`}>{user?.role}</span>
+                      </div>
+                    </div>
+                    {session?.sessionId && (
+                      <button type="button" className="shell-drawer-link" onClick={refreshHeartbeat}>
+                        <Clock size={17} />
+                        <span>Session {sessionMinutesLeft ? `${sessionMinutesLeft}m left` : 'active'} — refresh</span>
+                      </button>
+                    )}
+                    <button type="button" className="shell-drawer-link shell-drawer-link--danger" onClick={handleLogout}>
+                      <LogOut size={17} />
+                      <span>Sign out</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="shell-drawer-link active"
+                    onClick={() => {
+                      closeDrawer();
+                      setAuthModalOpen(true);
+                    }}
                   >
-                    <Icon size={17} />
-                    <span>{link.name}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="shell-drawer-block shell-drawer-account">
-            <div className="shell-drawer-label">Account</div>
-            {isAuthenticated ? (
-              <>
-                <div className="shell-drawer-user">
-                  <div className="navbar-avatar-btn" aria-hidden="true">
-                    {(user?.name || 'U').slice(0, 1).toUpperCase()}
-                  </div>
-                  <div>
-                    <strong>{user?.name || user?.username}</strong>
-                    <span className={`role-pill role-${user?.role || 'guest'}`}>{user?.role}</span>
-                  </div>
-                </div>
-                {session?.sessionId && (
-                  <button type="button" className="shell-drawer-link" onClick={refreshHeartbeat}>
-                    <Clock size={17} />
-                    <span>Session {sessionMinutesLeft ? `${sessionMinutesLeft}m left` : 'active'} — refresh</span>
+                    <User size={17} />
+                    <span>Sign in</span>
                   </button>
                 )}
-                <button type="button" className="shell-drawer-link shell-drawer-link--danger" onClick={handleLogout}>
-                  <LogOut size={17} />
-                  <span>Sign out</span>
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="shell-drawer-link active"
-                onClick={() => {
-                  closeDrawer();
-                  setAuthModalOpen(true);
-                }}
-              >
-                <User size={17} />
-                <span>Sign in</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </aside>
+              </div>
+            </div>
+          </aside>
+        </>,
+        document.body
+      )}
 
       <UnifiedAuthModal
         isOpen={authModalOpen}
