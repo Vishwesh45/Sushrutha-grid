@@ -274,8 +274,8 @@ const HOW_TO_MODULES = [
         detail: 'Submit NGO application against a specific requisition.',
       },
       {
-        name: 'My applications',
-        detail: 'Track PENDING / ACCEPTED / REJECTED / DEPLOYED.',
+        name: 'Our applications',
+        detail: 'Track PENDING / ACCEPTED / REJECTED / DEPLOYED for your NGO.',
       },
     ],
   },
