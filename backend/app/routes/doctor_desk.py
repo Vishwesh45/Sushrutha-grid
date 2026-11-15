@@ -620,7 +620,23 @@ def issue_digital_prescription(
         except Exception:
             pass
 
+    # Guard: only patients currently in chamber may receive a new Rx
     if token_doc:
+        tok_status = str(token_doc.get("status") or "").upper()
+        if tok_status == "COMPLETED":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This visit is already completed. Prescription cannot be re-issued.",
+            )
+        if tok_status != "IN_CONSULTATION":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Patient is not in consultation "
+                    f"(status: {tok_status or 'unknown'}). "
+                    "Start consultation first — skipped or waiting tokens cannot receive a prescription."
+                ),
+            )
         prescription_doc["token_number"] = token_doc.get("token_number")
 
     tok_hid = (token_doc.get("hospital_id") if token_doc else None) or (doc_profile.get("hospital_id") if doc_profile else None) or "HOSP-BLR-001"

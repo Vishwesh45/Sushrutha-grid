@@ -325,6 +325,8 @@ export default function DoctorDesk() {
       showAlert(`Token ${token.token_number} marked as SKIPPED (15-min grace window active).`);
       if (activeToken?.token_id === token.token_id) {
         setActiveToken((prev) => (prev ? { ...prev, status: 'SKIPPED' } : null));
+        // Skipped = not in chamber — leave any open Rx builder
+        setDeskTab((tab) => (tab === 'prescription' ? 'consultation' : tab));
       }
       await fetchDoctorProfileAndQueue();
     } catch (err) {
@@ -436,6 +438,16 @@ export default function DoctorDesk() {
     if (!activeToken) return;
     if (String(activeToken.status || '').toUpperCase() === 'COMPLETED') {
       showAlert('Completed visits cannot be edited.', 'error');
+      return;
+    }
+    if (String(activeToken.status || '').toUpperCase() !== 'IN_CONSULTATION') {
+      showAlert(
+        activeToken.status === 'SKIPPED'
+          ? 'Patient was skipped and is not in your chamber. Prescription is only available during an active consultation.'
+          : 'Start consultation first — prescription is only for patients currently in your chamber.',
+        'error',
+      );
+      setDeskTab('consultation');
       return;
     }
 
@@ -587,6 +599,9 @@ export default function DoctorDesk() {
   });
 
   const isActiveCompleted = String(activeToken?.status || '').toUpperCase() === 'COMPLETED';
+  const isActiveSkipped = String(activeToken?.status || '').toUpperCase() === 'SKIPPED';
+  /** Rx only while the patient is physically in consultation — not WAITING / CALLED / SKIPPED */
+  const canWritePrescription = String(activeToken?.status || '').toUpperCase() === 'IN_CONSULTATION';
 
   // ==========================================================
   // RENDER: FULL DOCTOR CLINICAL DESK WORKSPACE
@@ -666,17 +681,18 @@ export default function DoctorDesk() {
         {[
           { id: 'queue', label: 'Waiting patients', icon: ClipboardList, hint: waitingQueueTokens.length },
           { id: 'consultation', label: 'Consultation', icon: FileText, hint: activeToken && !isActiveCompleted ? activeToken.token_number : null },
-          { id: 'prescription', label: 'Digital prescription', icon: Pill, hint: activeToken?.status === 'IN_CONSULTATION' ? 'Rx' : null },
+          { id: 'prescription', label: 'Digital prescription', icon: Pill, hint: canWritePrescription ? 'Rx' : null },
           { id: 'completed', label: 'Completed', icon: CheckCircle2, hint: allCompletedTokens.length },
         ].map((tab) => {
           const Icon = tab.icon;
           const freeTabs = tab.id === 'queue' || tab.id === 'completed';
           const locked = !freeTabs && !activeToken;
+          const rxLocked = tab.id === 'prescription' && (!canWritePrescription || isActiveCompleted);
           return (
             <button
               key={tab.id}
               type="button"
-              disabled={locked && tab.id === 'prescription'}
+              disabled={(locked && tab.id === 'prescription') || (tab.id === 'prescription' && !canWritePrescription && !!activeToken)}
               onClick={() => {
                 if (!freeTabs && !activeToken) {
                   showAlert('Select or call a patient from Waiting patients first.', 'error');
@@ -688,8 +704,19 @@ export default function DoctorDesk() {
                   setDeskTab('completed');
                   return;
                 }
+                if (tab.id === 'prescription' && !canWritePrescription) {
+                  showAlert(
+                    isActiveSkipped
+                      ? 'Skipped patients are not in chamber — call/rejoin and start consultation before writing a prescription.'
+                      : 'Start consultation first. Prescription opens only while the patient is IN_CONSULTATION.',
+                    'error',
+                  );
+                  setDeskTab(activeToken ? 'consultation' : 'queue');
+                  return;
+                }
                 setDeskTab(tab.id);
               }}
+              title={rxLocked ? 'Available only during active consultation' : undefined}
               style={{
                 flex: 1,
                 minWidth: 140,
@@ -790,19 +817,21 @@ export default function DoctorDesk() {
                 const isCalled = t.status === 'CALLED';
                 const isWaiting = t.status === 'WAITING';
                 const isCompleted = t.status === 'COMPLETED';
+                const isSkipped = t.status === 'SKIPPED';
 
                 return (
                   <div
                     key={t.token_id}
                     onClick={() => selectPatientForConsultation(t)}
                     style={{
-                      border: `1.5px solid ${isSelected ? '#059669' : isInConsult ? '#86efac' : isCalled ? '#fde047' : '#e2e8f0'}`,
-                      background: isSelected ? '#f0fdf4' : isInConsult ? '#f0fdf4' : isCalled ? '#fefce8' : '#ffffff',
+                      border: `1.5px solid ${isSelected ? '#059669' : isInConsult ? '#86efac' : isCalled ? '#fde047' : isSkipped ? '#fcd34d' : '#e2e8f0'}`,
+                      background: isSelected ? '#f0fdf4' : isInConsult ? '#f0fdf4' : isCalled ? '#fefce8' : isSkipped ? '#fffbeb' : '#ffffff',
                       borderRadius: '10px',
                       padding: '12px 14px',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      boxShadow: isSelected ? '0 4px 12px rgba(5, 150, 105, 0.12)' : 'none'
+                      boxShadow: isSelected ? '0 4px 12px rgba(5, 150, 105, 0.12)' : 'none',
+                      opacity: isSkipped ? 0.92 : 1,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -848,10 +877,10 @@ export default function DoctorDesk() {
                         fontWeight: 800,
                         padding: '2px 6px',
                         borderRadius: '4px',
-                        background: isInConsult ? '#dcfce7' : isCalled ? '#fef08a' : isCompleted ? '#f1f5f9' : '#e0f2fe',
-                        color: isInConsult ? '#166534' : isCalled ? '#854d0e' : isCompleted ? '#64748b' : '#0369a1'
+                        background: isInConsult ? '#dcfce7' : isCalled ? '#fef08a' : isSkipped ? '#fde68a' : isCompleted ? '#f1f5f9' : '#e0f2fe',
+                        color: isInConsult ? '#166534' : isCalled ? '#854d0e' : isSkipped ? '#92400e' : isCompleted ? '#64748b' : '#0369a1'
                       }}>
-                        {t.status}
+                        {t.status}{isSkipped ? ' · no Rx' : ''}
                       </span>
 
                       {/* Action buttons on card */}
@@ -1059,7 +1088,12 @@ export default function DoctorDesk() {
                         COMPLETED · read-only · {formatUtcDate(activeToken.completed_at || activeToken.created_at)} · {formatUtcTime(activeToken.completed_at || activeToken.created_at)}
                       </span>
                     )}
-                    {!isActiveCompleted && activeToken.status !== 'IN_CONSULTATION' && canCallToken(activeToken) && (
+                    {isActiveSkipped && (
+                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 10px', borderRadius: 8 }}>
+                        SKIPPED · not in chamber · no prescription
+                      </span>
+                    )}
+                    {!isActiveCompleted && !isActiveSkipped && activeToken.status !== 'IN_CONSULTATION' && canCallToken(activeToken) && (
                       <button
                         type="button"
                         onClick={() => handleCallPatient(activeToken)}
@@ -1071,12 +1105,12 @@ export default function DoctorDesk() {
                         {activeToken.status === 'CALLED' ? 'Recall Patient' : 'Call to Chamber'}
                       </button>
                     )}
-                    {!isActiveCompleted && activeToken.status === 'WAITING' && !canCallToken(activeToken) && (
+                    {!isActiveCompleted && !isActiveSkipped && activeToken.status === 'WAITING' && !canCallToken(activeToken) && (
                       <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '6px 10px', borderRadius: 8 }}>
                         Not next in line — call {nextCallableToken?.token_number || 'the head of queue'} first
                       </span>
                     )}
-                    {!isActiveCompleted && activeToken.status !== 'IN_CONSULTATION' && canCallToken(activeToken) && (
+                    {!isActiveCompleted && !isActiveSkipped && activeToken.status !== 'IN_CONSULTATION' && canCallToken(activeToken) && (
                       <button
                         type="button"
                         onClick={() => handleStartConsultation(activeToken)}
@@ -1087,7 +1121,7 @@ export default function DoctorDesk() {
                         <Play size={13} style={{ marginRight: '4px' }} /> Start Consultation
                       </button>
                     )}
-                    {!isActiveCompleted && (activeToken.status === 'WAITING' || activeToken.status === 'CALLED') && canCallToken(activeToken) && (
+                    {!isActiveCompleted && !isActiveSkipped && (activeToken.status === 'WAITING' || activeToken.status === 'CALLED') && canCallToken(activeToken) && (
                       <button
                         type="button"
                         onClick={() => handleSkipPatient(activeToken)}
@@ -1115,7 +1149,7 @@ export default function DoctorDesk() {
                       >
                         <Pill size={13} style={{ marginRight: 4 }} /> View prescription
                       </button>
-                    ) : (
+                    ) : canWritePrescription ? (
                       <button
                         type="button"
                         onClick={() => setDeskTab('prescription')}
@@ -1124,7 +1158,7 @@ export default function DoctorDesk() {
                       >
                         <Pill size={13} style={{ marginRight: 4 }} /> Write prescription
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -1372,6 +1406,22 @@ export default function DoctorDesk() {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                 <button type="button" className="btn btn-primary" onClick={() => openCompletedPrescription(activeToken)}>View / download Rx</button>
                 <button type="button" className="btn btn-outline" onClick={() => setDeskTab('completed')}>Back to Completed</button>
+              </div>
+            </div>
+          ) : !canWritePrescription ? (
+            <div className="card" style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
+              <FastForward size={28} style={{ color: '#b45309', margin: '0 auto 10px' }} />
+              <h4 style={{ color: '#0f172a', margin: '0 0 8px' }}>
+                {isActiveSkipped ? 'Patient skipped — not in chamber' : 'Consultation not started'}
+              </h4>
+              <p style={{ marginBottom: 14, fontSize: '0.88rem', maxWidth: 440, marginLeft: 'auto', marginRight: 'auto' }}>
+                {isActiveSkipped
+                  ? 'A skipped token is out of your chamber queue for prescribing. When the patient rejoins and you Start consultation, Write prescription becomes available.'
+                  : 'Call the patient and Start consultation first. Digital prescription is only for IN_CONSULTATION visits.'}
+              </p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setDeskTab('consultation')}>Back to consultation</button>
+                <button type="button" className="btn btn-primary" onClick={() => setDeskTab('queue')}>Waiting list</button>
               </div>
             </div>
           ) : (
