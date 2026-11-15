@@ -46,7 +46,7 @@ const ADMIN_NAV = [
     group: 'Insights',
     items: [
         { id: 'analytics', label: 'Decisions today', hint: 'Clear ops numbers', icon: Activity },
-      { id: 'reviews', label: 'Ratings', hint: 'Patient feedback', icon: Award },
+        { id: 'reviews', label: 'Performance', hint: 'Hospital & doctors', icon: Award },
       { id: 'audit', label: 'Audit log', hint: 'Events & sessions', icon: ShieldAlert },
     ],
   },
@@ -184,6 +184,9 @@ export default function AdminModule() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [reviewAnalytics, setReviewAnalytics] = useState(null);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [ratingsPerfView, setRatingsPerfView] = useState('hospital'); // hospital | doctors
+  const [doctorPerfSort, setDoctorPerfSort] = useState('weakest'); // weakest | reviews | bad
+  const [expandedDoctorKey, setExpandedDoctorKey] = useState(null);
   const [timeframeFilter, setTimeframeFilter] = useState('today'); // 'today', 'date', 'month', 'all'
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
@@ -1915,250 +1918,343 @@ export default function AdminModule() {
       )}
 
       {/* ========================================================== */}
-      {/* TAB: RATINGS & REVIEWS — facility / dept / doctor / ward   */}
+      {/* TAB: PERFORMANCE — Hospital vs Doctor (plain, high contrast) */}
       {/* ========================================================== */}
       {activeAdminTab === 'reviews' && (() => {
-        const bandStyle = (band) => ({
-          green: { bg: '#ecfdf5', border: '#a7f3d0', color: '#047857' },
-          yellow: { bg: '#fffbeb', border: '#fde68a', color: '#b45309' },
-          red: { bg: '#fef2f2', border: '#fecaca', color: '#b91c1c' },
-        }[band] || { bg: '#f8fafc', border: '#e2e8f0', color: '#475569' });
-        const pill = (band, text) => {
-          const s = bandStyle(band);
-          return (
-            <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: 999, background: s.bg, border: `1px solid ${s.border}`, color: s.color, textTransform: 'uppercase' }}>
-              {text || band}
-            </span>
-          );
-        };
-        const scoreCard = (label, avg, band, count) => {
-          const s = bandStyle(band);
-          return (
-            <div style={{ background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: 14 }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: s.color, textTransform: 'uppercase' }}>{label}</div>
-              <div style={{ fontSize: '1.55rem', fontWeight: 900, color: s.color }}>{avg != null ? `${avg}★` : '—'}</div>
-              <div style={{ fontSize: '0.74rem', color: s.color, opacity: 0.85 }}>{count || 0} reviews · {band}</div>
-            </div>
-          );
-        };
-        const starMix = reviewAnalytics?.facility?.rating_distribution
-          || reviewAnalytics?.hospital_rating_distribution
-          || [];
-        const starTotal = Math.max(1, starMix.reduce((s, e) => s + (e.count || 0), 0));
-        const deptRows = (reviewAnalytics?.departments || []).slice().sort(
+        const bandLabel = (band) => ({ green: 'Good', yellow: 'Watch', red: 'Act' }[band] || '—');
+        const bandClass = (band) => `perf-band perf-band--${band || 'neutral'}`;
+        const doctors = [...(reviewAnalytics?.doctors || reviewAnalytics?.top_doctors || [])];
+        if (doctorPerfSort === 'reviews') {
+          doctors.sort((a, b) => (b.review_count || 0) - (a.review_count || 0));
+        } else if (doctorPerfSort === 'bad') {
+          doctors.sort((a, b) => (b.bad_review_count || 0) - (a.bad_review_count || 0) || (a.avg_rating || 0) - (b.avg_rating || 0));
+        } else {
+          doctors.sort((a, b) => (a.avg_rating || 0) - (b.avg_rating || 0) || (b.bad_review_count || 0) - (a.bad_review_count || 0));
+        }
+        const deptRows = [...(reviewAnalytics?.departments || [])].sort(
           (a, b) => (a.avg_department_rating || 0) - (b.avg_department_rating || 0)
         );
-        const trend = (reviewAnalytics?.trend_last_14_days || []).slice(-7);
+        const wardRows = [...(reviewAnalytics?.wards || [])].sort(
+          (a, b) => (a.avg_rating || 0) - (b.avg_rating || 0)
+        );
+        const hospAlerts = (reviewAnalytics?.emergency_alerts || []).filter(
+          (a) => ['facility', 'department', 'ward'].includes(String(a.target_type || '').toLowerCase())
+        );
+        const docAlerts = (reviewAnalytics?.emergency_alerts || []).filter(
+          (a) => String(a.target_type || '').toLowerCase() === 'doctor'
+        );
+        const redDocs = doctors.filter((d) => d.severity_band === 'red').length;
+        const yellowDocs = doctors.filter((d) => d.severity_band === 'yellow').length;
+        const avgDoctor = reviewAnalytics?.avg_doctor_rating
+          ?? (doctors.length
+            ? Math.round((doctors.reduce((s, d) => s + (d.avg_rating || 0), 0) / doctors.length) * 100) / 100
+            : null);
+
+        const exportDoctorCsv = () => {
+          const rows = [
+            ['doctor_name', 'department', 'avg_rating', 'review_count', 'bad_reviews_le_2', 'severity_band', 'latest_bad_comment'],
+            ...doctors.map((d) => [
+              d.doctor_name || '',
+              d.department || '',
+              d.avg_rating ?? '',
+              d.review_count ?? 0,
+              d.bad_review_count ?? 0,
+              d.severity_band || '',
+              String(d.latest_bad_comment || '').replace(/\r?\n/g, ' '),
+            ]),
+          ];
+          const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+          const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `doctor-performance-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+
+        const measureForDoctor = (d) => {
+          if ((d.avg_rating || 0) <= 2 || (d.bad_review_count || 0) >= 2) {
+            return 'Counsel this doctor and review recent bad comments with the HOD.';
+          }
+          if (d.severity_band === 'yellow') {
+            return 'Watch next 10 visits; pair with a senior if complaints continue.';
+          }
+          if ((d.review_count || 0) >= 5 && d.severity_band === 'green') {
+            return 'Strong cohort for quality research — keep monitoring volume.';
+          }
+          return 'Maintain standard supervision.';
+        };
 
         return (
-        <div className="card admin-plain-analytics" style={{ padding: '24px', marginTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+        <div className="perf-board">
+          <div className="perf-board-head">
             <div>
-              <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b', lineHeight: 1.45, maxWidth: 640 }}>
-                Plain scores so floor managers can spot weak departments and bad reviews fast — no chart reading required.
+              <h3>Performance analysis</h3>
+              <p>
+                Two clear boards: <b>Hospital</b> (facility, departments, wards) and <b>Doctors</b> (individual clinician scores for action and research).
+                Score guide: 4–5 good · 3 watch · 1–2 act now.
               </p>
             </div>
-            <button type="button" className="btn btn-outline" onClick={fetchReviewAnalytics} disabled={loadingReviews}>
-              <RefreshCw size={14} className={loadingReviews ? 'spin' : ''} /> Refresh
-            </button>
+            <div className="perf-board-actions">
+              <div className="perf-toggle" role="tablist" aria-label="Performance view">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={ratingsPerfView === 'hospital'}
+                  className={ratingsPerfView === 'hospital' ? 'is-active' : ''}
+                  onClick={() => setRatingsPerfView('hospital')}
+                >
+                  Hospital
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={ratingsPerfView === 'doctors'}
+                  className={ratingsPerfView === 'doctors' ? 'is-active' : ''}
+                  onClick={() => setRatingsPerfView('doctors')}
+                >
+                  Doctors
+                </button>
+              </div>
+              <button type="button" className="btn btn-outline" onClick={fetchReviewAnalytics} disabled={loadingReviews}>
+                <RefreshCw size={14} className={loadingReviews ? 'spin' : ''} /> Refresh
+              </button>
+            </div>
           </div>
 
           {loadingReviews && !reviewAnalytics ? (
-            <p className="admin-muted">Loading review analytics…</p>
+            <p className="perf-empty">Loading performance data…</p>
           ) : !reviewAnalytics || reviewAnalytics.total_reviews === 0 ? (
-            <div className="admin-empty-hint">
-              No structured reviews yet. Patients submit from the Reviews tab.
-            </div>
-          ) : (
+            <div className="perf-empty-box">No structured reviews yet. Patients submit from the patient Reviews tab.</div>
+          ) : ratingsPerfView === 'hospital' ? (
             <>
-              <div className="admin-kpi-row">
-                {scoreCard('Overall', reviewAnalytics.overall?.avg_rating, reviewAnalytics.overall?.severity_band, reviewAnalytics.total_reviews)}
-                {scoreCard('Facility', reviewAnalytics.facility?.avg_rating, reviewAnalytics.facility?.severity_band, reviewAnalytics.facility?.review_count)}
-                {scoreCard('Bad alerts', reviewAnalytics.emergency_count, reviewAnalytics.emergency_count > 0 ? 'red' : 'green', reviewAnalytics.emergency_count)}
-                <div className="admin-kpi-card">
-                  <span>How to read</span>
-                  <strong style={{ fontSize: '1rem' }}>≥4 good</strong>
-                  <em>3 = average · ≤2 = act now</em>
+              <div className="perf-kpi-grid">
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Hospital overall</div>
+                  <div className="perf-kpi-value">{reviewAnalytics.overall?.avg_rating != null ? `${reviewAnalytics.overall.avg_rating}★` : '—'}</div>
+                  <div className="perf-kpi-meta">{reviewAnalytics.total_reviews} reviews · <span className={bandClass(reviewAnalytics.overall?.severity_band)}>{bandLabel(reviewAnalytics.overall?.severity_band)}</span></div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Facility score</div>
+                  <div className="perf-kpi-value">{reviewAnalytics.facility?.avg_rating != null ? `${reviewAnalytics.facility.avg_rating}★` : '—'}</div>
+                  <div className="perf-kpi-meta">{reviewAnalytics.facility?.review_count || 0} facility ratings · <span className={bandClass(reviewAnalytics.facility?.severity_band)}>{bandLabel(reviewAnalytics.facility?.severity_band)}</span></div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Weak departments</div>
+                  <div className="perf-kpi-value">{deptRows.filter((d) => d.severity_band === 'red').length}</div>
+                  <div className="perf-kpi-meta">in Act band (need floor intervention)</div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Hospital alerts</div>
+                  <div className={`perf-kpi-value ${hospAlerts.length ? 'is-alert' : ''}`}>{hospAlerts.length}</div>
+                  <div className="perf-kpi-meta">facility / department / ward ≤2★</div>
                 </div>
               </div>
 
               {(reviewAnalytics.xai_hospital_summary || reviewAnalytics.overall?.xai_summary) && (
-                <div className="admin-decision-card" style={{ marginBottom: 14 }}>
-                  <h4>What this means</h4>
-                  <p style={{ margin: 0 }}>
-                    {reviewAnalytics.xai_hospital_summary || reviewAnalytics.overall?.xai_summary}
-                  </p>
+                <div className="perf-panel">
+                  <h4>What the hospital scores mean</h4>
+                  <p className="perf-body">{reviewAnalytics.xai_hospital_summary || reviewAnalytics.overall?.xai_summary}</p>
                   {reviewAnalytics.facility?.xai_summary && (
-                    <p style={{ margin: '8px 0 0' }}>{reviewAnalytics.facility.xai_summary}</p>
+                    <p className="perf-body">{reviewAnalytics.facility.xai_summary}</p>
                   )}
                 </div>
               )}
 
-              <div className="admin-decision-card" style={{ marginBottom: 14, borderColor: '#fecaca', background: '#fff5f5' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <h4 style={{ margin: 0, color: '#991b1b' }}>Act on these bad reviews (≤2★)</h4>
-                  {pill('red', `${reviewAnalytics.emergency_count || 0} alerts`)}
+              <div className="perf-panel">
+                <div className="perf-panel-head">
+                  <h4>Hospital alerts to act on</h4>
+                  <span className="perf-count">{hospAlerts.length}</span>
                 </div>
-                {(reviewAnalytics.emergency_alerts || []).length === 0 ? (
-                  <p className="admin-muted" style={{ margin: 0 }}>No critical facility / department / doctor / ward alerts.</p>
+                {hospAlerts.length === 0 ? (
+                  <p className="perf-body">No facility / department / ward alerts right now.</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
-                    {(reviewAnalytics.emergency_alerts || []).slice(0, 12).map((a) => (
-                      <div key={a.id} style={{ background: '#fff', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 10px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                          <strong style={{ fontSize: '0.86rem', color: '#7f1d1d' }}>
-                            {String(a.target_type || '').toUpperCase()} · {a.target_name} · {a.rating}★
-                          </strong>
-                          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{formatUtcDateTime(a.created_at)}</span>
+                  <ul className="perf-alert-list">
+                    {hospAlerts.slice(0, 10).map((a) => (
+                      <li key={a.id}>
+                        <div className="perf-alert-top">
+                          <strong>{String(a.target_type || '').toUpperCase()} · {a.target_name} · {a.rating}★</strong>
+                          <span>{formatUtcDateTime(a.created_at)}</span>
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 2 }}>
-                          {a.department ? `${a.department} · ` : ''}{a.doctor_name || ''}{a.ward_name ? ` · ${a.ward_name}` : ''}{a.token_number ? ` · Token ${a.token_number}` : ''}
+                        <div className="perf-alert-sub">
+                          {[a.department, a.ward_name, a.token_number ? `Token ${a.token_number}` : null].filter(Boolean).join(' · ')}
                         </div>
-                        {a.comment && <div style={{ fontSize: '0.82rem', color: '#334155', marginTop: 4 }}>&ldquo;{a.comment}&rdquo;</div>}
-                      </div>
+                        {a.comment && <div className="perf-alert-quote">&ldquo;{a.comment}&rdquo;</div>}
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
               </div>
 
-              <div className="admin-decision-grid" style={{ marginBottom: 14 }}>
-                <div className="admin-decision-card">
-                  <h4>Star mix (facility)</h4>
-                  <p>How many reviews landed on each star — red bars need follow-up.</p>
-                  {starMix.length === 0 ? (
-                    <p className="admin-muted">No star breakdown yet.</p>
-                  ) : starMix.map((entry) => {
-                    const color = entry.stars <= 2 ? '#dc2626' : entry.stars === 3 ? '#d97706' : '#059669';
-                    return (
-                      <div key={`star-${entry.stars}`} className="admin-bar-row">
-                        <div className="admin-bar-meta">
-                          <span>{entry.stars}★</span>
-                          <strong>{entry.count || 0}</strong>
-                        </div>
-                        <div className="admin-bar-track">
-                          <div className="admin-bar-fill" style={{ width: `${((entry.count || 0) / starTotal) * 100}%`, background: color }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="admin-decision-card">
-                  <h4>Departments (lowest first)</h4>
-                  <p>Weakest scores rise to the top so you know where to intervene.</p>
+              <div className="perf-two-col">
+                <div className="perf-panel">
+                  <h4>Departments (weakest first)</h4>
+                  <p className="perf-help">Intervene at the top of this list first.</p>
                   {deptRows.length === 0 ? (
-                    <p className="admin-muted">No department ratings yet.</p>
-                  ) : deptRows.slice(0, 10).map((d) => {
-                    const avg = d.avg_department_rating || 0;
-                    const color = d.severity_band === 'red' ? '#dc2626' : d.severity_band === 'yellow' ? '#d97706' : '#059669';
-                    return (
-                      <div key={d.department} className="admin-bar-row">
-                        <div className="admin-bar-meta">
-                          <span>{d.department}</span>
-                          <strong>{avg}★</strong>
-                        </div>
-                        <div className="admin-bar-track">
-                          <div className="admin-bar-fill" style={{ width: `${(avg / 5) * 100}%`, background: color }} />
-                        </div>
+                    <p className="perf-body">No department ratings yet.</p>
+                  ) : deptRows.map((d) => (
+                    <div key={d.department} className="perf-bar-row">
+                      <div className="perf-bar-meta">
+                        <span>{d.department}</span>
+                        <strong>{d.avg_department_rating}★ <span className={bandClass(d.severity_band)}>{bandLabel(d.severity_band)}</span></strong>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="admin-decision-card">
-                  <h4>Last 7 days</h4>
-                  <p>Review volume and bad flags — rising red means act this week.</p>
-                  {trend.length === 0 ? (
-                    <p className="admin-muted">No recent trend data.</p>
-                  ) : (
-                    <ul className="admin-action-list">
-                      {trend.map((t) => {
-                        const avg = t.avg_overall_rating ?? t.avg_hospital_rating ?? 0;
-                        return (
-                          <li key={t.date}>
-                            <strong>{t.date}</strong>: {t.reviews || 0} reviews · avg {avg}★
-                            {(t.bad_reviews || 0) > 0 ? ` · ${t.bad_reviews} bad` : ''}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </div>
-
-              {/* Department → doctors hierarchy + XAI */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-                <strong style={{ display: 'block', marginBottom: 6, color: '#0f172a' }}>Department → doctors</strong>
-                <p style={{ margin: '0 0 12px', fontSize: '0.8rem', color: '#64748b' }}>
-                  Open a department to see nested doctor ratings and XAI rationale (why green / yellow / red).
-                </p>
-                {(reviewAnalytics.departments || []).map((d) => {
-                  const s = bandStyle(d.severity_band);
-                  return (
-                    <details key={d.department} style={{ border: `1px solid ${s.border}`, background: s.bg, borderRadius: 10, marginBottom: 10, padding: '4px 12px 10px' }} open={d.severity_band === 'red'}>
-                      <summary style={{ cursor: 'pointer', listStyle: 'none', padding: '10px 0', display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>{d.department}</span>
-                        <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 900, color: s.color }}>{d.avg_department_rating}★</span>
-                          {pill(d.severity_band)}
-                          <span style={{ fontSize: '0.74rem', color: '#64748b' }}>{(d.doctors || []).length} doctor{(d.doctors || []).length === 1 ? '' : 's'}</span>
-                        </span>
-                      </summary>
-                      <div style={{ fontSize: '0.78rem', color: '#475569', marginBottom: 8 }}>
-                        Facility {d.avg_facility_rating}★ · Doctors {d.avg_doctor_rating}★ · Ward {d.avg_ward_rating}★ · {d.review_count} reviews
-                        {d.bad_review_count > 0 ? ` · ${d.bad_review_count} emergency-flagged` : ''}
+                      <div className="perf-bar-track">
+                        <div className="perf-bar-fill" style={{ width: `${((d.avg_department_rating || 0) / 5) * 100}%` }} />
                       </div>
-                      {d.xai_summary && (
-                        <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '8px 10px', marginBottom: 10, fontSize: '0.82rem', color: '#5b21b6', lineHeight: 1.45 }}>
-                          {d.xai_summary}
-                        </div>
-                      )}
-                      {(d.doctors || []).length === 0 ? (
-                        <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>No doctor-tagged reviews in this department yet.</p>
-                      ) : (
-                        (d.doctors || []).map((doc) => {
-                          const ds = bandStyle(doc.severity_band);
-                          return (
-                            <div key={doc.doctor_id || doc.doctor_name} style={{ background: '#fff', border: `1px solid ${ds.border}`, borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                                <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{doc.doctor_name}</strong>
-                                <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                  <span style={{ fontWeight: 900, color: ds.color }}>{doc.avg_rating}★</span>
-                                  {pill(doc.severity_band)}
-                                </span>
-                              </div>
-                              <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: 2 }}>
-                                {doc.review_count} reviews{doc.bad_review_count ? ` · ${doc.bad_review_count} bad (≤2★)` : ''}
-                              </div>
-                              {doc.xai_summary && (
-                                <div style={{ marginTop: 6, fontSize: '0.8rem', color: '#4c1d95', lineHeight: 1.4 }}>{doc.xai_summary}</div>
-                              )}
-                              {doc.latest_bad_comment && (
-                                <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#7f1d1d' }}>&ldquo;{doc.latest_bad_comment}&rdquo;</div>
-                              )}
-                            </div>
-                          );
-                        })
-                      )}
-                    </details>
-                  );
-                })}
-              </div>
-
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: 14 }}>
-                <strong style={{ display: 'block', marginBottom: 10 }}>Wards / chambers</strong>
-                {(reviewAnalytics.wards || []).map((w) => {
-                  const s = bandStyle(w.severity_band);
-                  return (
-                    <div key={w.ward_name} style={{ borderTop: '1px solid #f1f5f9', padding: '8px 0' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                        <strong style={{ fontSize: '0.86rem' }}>{w.ward_name}</strong>
-                        <span style={{ fontWeight: 800, color: s.color }}>{w.avg_rating}★</span>
-                      </div>
-                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{w.review_count} reviews · bad {w.bad_review_count || 0} {pill(w.severity_band)}</div>
+                      <div className="perf-bar-foot">{d.review_count} reviews · doctors avg {d.avg_doctor_rating}★ · ward {d.avg_ward_rating}★</div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+
+                <div className="perf-panel">
+                  <h4>Wards / chambers</h4>
+                  <p className="perf-help">Waiting-area and chamber experience scores.</p>
+                  {wardRows.length === 0 ? (
+                    <p className="perf-body">No ward ratings yet.</p>
+                  ) : wardRows.map((w) => (
+                    <div key={w.ward_name} className="perf-bar-row">
+                      <div className="perf-bar-meta">
+                        <span>{w.ward_name}</span>
+                        <strong>{w.avg_rating}★ <span className={bandClass(w.severity_band)}>{bandLabel(w.severity_band)}</span></strong>
+                      </div>
+                      <div className="perf-bar-track">
+                        <div className="perf-bar-fill" style={{ width: `${((w.avg_rating || 0) / 5) * 100}%` }} />
+                      </div>
+                      <div className="perf-bar-foot">{w.review_count} reviews · bad ≤2★: {w.bad_review_count || 0}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="perf-kpi-grid">
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Doctors rated</div>
+                  <div className="perf-kpi-value">{doctors.length}</div>
+                  <div className="perf-kpi-meta">with visit-linked doctor scores</div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Average doctor ★</div>
+                  <div className="perf-kpi-value">{avgDoctor != null ? `${avgDoctor}★` : '—'}</div>
+                  <div className="perf-kpi-meta">across all doctor ratings</div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Need action</div>
+                  <div className={`perf-kpi-value ${redDocs ? 'is-alert' : ''}`}>{redDocs}</div>
+                  <div className="perf-kpi-meta">{yellowDocs} on watch · {docAlerts.length} doctor alerts</div>
+                </div>
+                <div className="perf-kpi">
+                  <div className="perf-kpi-label">Research note</div>
+                  <div className="perf-kpi-value perf-kpi-value--sm">CSV ready</div>
+                  <div className="perf-kpi-meta">Export leaderboard for later study</div>
+                </div>
+              </div>
+
+              <div className="perf-panel">
+                <div className="perf-panel-head">
+                  <h4>Doctor alerts (≤2★)</h4>
+                  <span className="perf-count">{docAlerts.length}</span>
+                </div>
+                {docAlerts.length === 0 ? (
+                  <p className="perf-body">No doctor-targeted bad reviews in the alert queue.</p>
+                ) : (
+                  <ul className="perf-alert-list">
+                    {docAlerts.slice(0, 10).map((a) => (
+                      <li key={a.id}>
+                        <div className="perf-alert-top">
+                          <strong>{a.target_name || a.doctor_name} · {a.rating}★</strong>
+                          <span>{formatUtcDateTime(a.created_at)}</span>
+                        </div>
+                        <div className="perf-alert-sub">
+                          {[a.department, a.token_number ? `Token ${a.token_number}` : null].filter(Boolean).join(' · ')}
+                        </div>
+                        {a.comment && <div className="perf-alert-quote">&ldquo;{a.comment}&rdquo;</div>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="perf-panel">
+                <div className="perf-panel-head perf-panel-head--wrap">
+                  <div>
+                    <h4>Doctor performance leaderboard</h4>
+                    <p className="perf-help">Use this for counseling, roster decisions, and research export. Weakest doctors rise first by default.</p>
+                  </div>
+                  <div className="perf-toolbar">
+                    <label className="perf-sort">
+                      Sort
+                      <select value={doctorPerfSort} onChange={(e) => setDoctorPerfSort(e.target.value)} className="filter-select">
+                        <option value="weakest">Weakest first</option>
+                        <option value="bad">Most bad flags</option>
+                        <option value="reviews">Most reviews</option>
+                      </select>
+                    </label>
+                    <button type="button" className="btn btn-outline" onClick={exportDoctorCsv} disabled={doctors.length === 0}>
+                      Export CSV
+                    </button>
+                  </div>
+                </div>
+
+                {doctors.length === 0 ? (
+                  <p className="perf-body">No doctor-tagged ratings yet.</p>
+                ) : (
+                  <div className="perf-table-wrap">
+                    <table className="perf-table">
+                      <thead>
+                        <tr>
+                          <th>Doctor</th>
+                          <th>Dept</th>
+                          <th>Avg ★</th>
+                          <th>Reviews</th>
+                          <th>Bad ≤2★</th>
+                          <th>Status</th>
+                          <th>Measure</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {doctors.map((d) => {
+                          const key = d.doctor_id || d.doctor_name;
+                          const open = expandedDoctorKey === key;
+                          return (
+                            <React.Fragment key={key}>
+                              <tr className={d.severity_band === 'red' ? 'is-alert-row' : ''}>
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="perf-name-btn"
+                                    onClick={() => setExpandedDoctorKey(open ? null : key)}
+                                  >
+                                    {d.doctor_name}
+                                  </button>
+                                </td>
+                                <td>{d.department || '—'}</td>
+                                <td><strong>{d.avg_rating}★</strong></td>
+                                <td>{d.review_count}</td>
+                                <td>{d.bad_review_count || 0}</td>
+                                <td><span className={bandClass(d.severity_band)}>{bandLabel(d.severity_band)}</span></td>
+                                <td className="perf-measure-cell">{measureForDoctor(d)}</td>
+                              </tr>
+                              {open && (
+                                <tr className="perf-expand-row">
+                                  <td colSpan={7}>
+                                    {d.xai_summary && <p className="perf-body"><b>Why this band:</b> {d.xai_summary}</p>}
+                                    {d.latest_bad_comment && (
+                                      <p className="perf-alert-quote">Latest bad comment: &ldquo;{d.latest_bad_comment}&rdquo;</p>
+                                    )}
+                                    <p className="perf-body">Recommended measure: {measureForDoctor(d)}</p>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </>
           )}
