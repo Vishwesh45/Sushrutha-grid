@@ -824,7 +824,7 @@
   color: #fff;
 }
 
-/* Follow-ups — clear visual blocks (Due / Upcoming / Past) */
+/* Follow-ups - clear visual blocks (Due / Upcoming / Past) */
 .fu-page-head {
   display: flex;
   justify-content: space-between;
